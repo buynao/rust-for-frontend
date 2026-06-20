@@ -21,15 +21,7 @@ export default function Home() {
           <span className="hero-badge">{t.badgeForFrontend}</span>
           <span className="hero-badge">{t.badgeVisual}</span>
         </div>
-        <h1 className="hero-title">
-          {t.heroTitlePre} <em>{t.heroTitleEm}</em>
-          {t.heroTitlePost && (
-            <>
-              <br />
-              {t.heroTitlePost}
-            </>
-          )}
-        </h1>
+        <h1 className="hero-title">{t.heroTitle}</h1>
         <p className="hero-sub">{t.heroSub}</p>
         <div className="hero-actions">
           <Link className="btn-primary" to={`/learn/${first.slug}`}>

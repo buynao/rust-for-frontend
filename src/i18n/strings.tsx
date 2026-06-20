@@ -21,9 +21,7 @@ export interface UIStrings {
   badgeRust: string
   badgeForFrontend: string
   badgeVisual: string
-  heroTitlePre: string
-  heroTitleEm: string
-  heroTitlePost: string
+  heroTitle: JSX.Element
   heroSub: JSX.Element
   startChapter: (title: string) => string
   openPlayground: string
@@ -107,9 +105,13 @@ const zh: UIStrings = {
   badgeRust: '🦀 Rust',
   badgeForFrontend: '面向前端工程师',
   badgeVisual: '可视化 · 可交互',
-  heroTitlePre: '用',
-  heroTitleEm: '前端的心智模型',
-  heroTitlePost: '把 Rust 学进去',
+  heroTitle: (
+    <>
+      用<em>前端的心智模型</em>
+      <br />
+      把 Rust 学进去
+    </>
+  ),
   heroSub: (
     <>
       你已经会 JavaScript / TypeScript 了。这门课不从零讲编程,而是把 Rust
@@ -219,9 +221,11 @@ const en: UIStrings = {
   badgeRust: '🦀 Rust',
   badgeForFrontend: 'For Frontend Engineers',
   badgeVisual: 'Visual · Interactive',
-  heroTitlePre: 'Learn Rust through a',
-  heroTitleEm: 'frontend mental model',
-  heroTitlePost: '',
+  heroTitle: (
+    <>
+      Learn Rust through a <em>frontend mental model</em>
+    </>
+  ),
   heroSub: (
     <>
       You already know JavaScript / TypeScript. This course doesn't teach

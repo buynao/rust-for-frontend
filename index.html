@@ -1,14 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 本站自带中英切换,禁用浏览器自动翻译,避免其改写 DOM 触发 React 崩溃 -->
+    <meta name="google" content="notranslate" />
     <meta
       name="description"
       content="An interactive Rust course for frontend developers — use the JS/TS mental models you already know to visually grasp ownership, borrowing, lifetimes, and WebAssembly."
     />
     <title>Rust for Frontend · An Interactive Rust Course for Frontend Devs</title>
+    <script>
+      // 在 React 挂载前就把 <html lang> 设成与即将渲染的内容一致的语言,
+      // 与 src/i18n/lang.tsx 的检测逻辑保持一致(localStorage 优先,其次浏览器语言)。
+      (function () {
+        try {
+          var saved = localStorage.getItem('rff:lang')
+          var lang =
+            saved === 'zh' || saved === 'en'
+              ? saved
+              : (navigator.language || '').toLowerCase().indexOf('zh') === 0
+                ? 'zh'
+                : 'en'
+          document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
