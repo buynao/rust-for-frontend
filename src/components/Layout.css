@@ -36,6 +36,28 @@
   font-style: normal;
   font-weight: 600;
 }
+.topbar-social {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.social-link {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--fg-2);
+  transition: color 0.15s, background 0.15s;
+}
+.social-link:hover {
+  color: var(--fg-0);
+  background: var(--bg-2);
+  text-decoration: none;
+}
 .topbar-progress {
   margin-left: auto;
   position: relative;
@@ -194,6 +216,11 @@
 }
 
 /* ---------- 响应式 ---------- */
+@media (max-width: 640px) {
+  .topbar-social {
+    display: none;
+  }
+}
 @media (max-width: 900px) {
   .hamburger {
     display: flex;
