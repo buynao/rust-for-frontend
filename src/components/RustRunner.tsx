@@ -7,6 +7,7 @@ import {
   looksLikeFullProgram,
   type ExecuteResult,
 } from '../lib/playground'
+import { useUI } from '../i18n/strings'
 import './RustRunner.css'
 
 interface Props {
@@ -32,6 +33,7 @@ const EDITOR_FONT: React.CSSProperties = {
 }
 
 export default function RustRunner({ initialCode, title, expectedOutput }: Props) {
+  const t = useUI()
   const [code, setCode] = useState(initialCode)
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<ExecuteResult | null>(null)
@@ -58,7 +60,7 @@ export default function RustRunner({ initialCode, title, expectedOutput }: Props
       setStatus(r.success ? 'done' : 'error')
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      setErrMsg((e as Error).message || '请求失败')
+      setErrMsg((e as Error).message || t.requestFailed)
       setStatus('error')
     }
   }
@@ -78,10 +80,10 @@ export default function RustRunner({ initialCode, title, expectedOutput }: Props
       <div className="runner-bar">
         <div className="runner-dots"><span /><span /><span /></div>
         {title && <span className="runner-title">{title}</span>}
-        <span className="runner-lang">rust · 可编辑</span>
+        <span className="runner-lang">{t.runnerEditable}</span>
         <div className="runner-actions">
           {edited && (
-            <button className="rn-btn" onClick={reset} title="还原为初始代码">↺ 还原</button>
+            <button className="rn-btn" onClick={reset} title={t.restoreTitle}>{t.restore}</button>
           )}
           <a className="rn-btn" href={playgroundUrl(code)} target="_blank" rel="noreferrer">
             Playground ↗
@@ -91,7 +93,7 @@ export default function RustRunner({ initialCode, title, expectedOutput }: Props
             onClick={run}
             disabled={status === 'running'}
           >
-            {status === 'running' ? '编译中…' : '▶ 运行'}
+            {status === 'running' ? t.compiling : t.run}
           </button>
         </div>
       </div>
@@ -139,33 +141,33 @@ export default function RustRunner({ initialCode, title, expectedOutput }: Props
       {/* 输出区 */}
       {status === 'idle' && expectedOutput !== undefined && (
         <div className="runner-output runner-output--hint">
-          <span className="runner-out-tag">预期输出</span>
+          <span className="runner-out-tag">{t.expectedOutput}</span>
           <pre>{expectedOutput}</pre>
         </div>
       )}
       {status === 'running' && (
         <div className="runner-output runner-output--running">
-          <span className="runner-spinner" /> 正在云端编译并运行…
+          <span className="runner-spinner" /> {t.runningCloud}
         </div>
       )}
       {status === 'error' && errMsg && (
         <div className="runner-output runner-output--err">
-          <span className="runner-out-tag">出错</span>
-          <pre>{errMsg}(网络问题或 Playground 暂不可用,可点右上角 Playground ↗ 重试)</pre>
+          <span className="runner-out-tag">{t.errorTag}</span>
+          <pre>{errMsg}{t.runnerErrHint}</pre>
         </div>
       )}
       {result && (status === 'done' || status === 'error') && (
         <div className={`runner-output ${result.success ? 'runner-output--ok' : 'runner-output--err'}`}>
           <span className="runner-out-tag">
-            {result.success ? '输出' : '编译失败'}
-            <i className="runner-meta"> · {elapsed.toFixed(2)}s · 来自 play.rust-lang.org</i>
+            {result.success ? t.outputOk : t.compileFailed}
+            <i className="runner-meta">{t.fromPlayground(elapsed.toFixed(2))}</i>
           </span>
           {result.stdout && <pre className="runner-stdout">{result.stdout}</pre>}
           {!result.success && result.stderr && (
             <pre className="runner-stderr">{cleanStderr(result.stderr)}</pre>
           )}
           {result.success && !result.stdout && (
-            <pre className="runner-stdout runner-dim">(程序没有输出)</pre>
+            <pre className="runner-stdout runner-dim">{t.noOutput}</pre>
           )}
         </div>
       )}

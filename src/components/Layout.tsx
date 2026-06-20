@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { chapters, groupedChapters } from '../content/chapters'
 import { useProgress } from '../hooks/useProgress'
+import { useLang, loc, useLangControls } from '../i18n/lang'
+import { useUI } from '../i18n/strings'
 import './Layout.css'
 
 export default function Layout() {
@@ -9,6 +11,9 @@ export default function Layout() {
   const { completed } = useProgress()
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const lang = useLang()
+  const { toggle: toggleLang } = useLangControls()
+  const t = useUI()
   const pct = Math.round((completed.size / chapters.length) * 100)
 
   return (
@@ -16,7 +21,7 @@ export default function Layout() {
       <header className="topbar">
         <button
           className="hamburger"
-          aria-label="菜单"
+          aria-label={t.menu}
           onClick={() => setOpen((v) => !v)}
         >
           <span /><span /><span />
@@ -27,7 +32,7 @@ export default function Layout() {
             Rust <em>for</em> Frontend
           </span>
         </Link>
-        <div className="topbar-progress" title={`已完成 ${completed.size}/${chapters.length}`}>
+        <div className="topbar-progress" title={t.completedOf(completed.size, chapters.length)}>
           <div className="topbar-progress-bar" style={{ width: `${pct}%` }} />
           <span className="topbar-progress-label">{pct}%</span>
         </div>
@@ -37,16 +42,25 @@ export default function Layout() {
           target="_blank"
           rel="noreferrer"
         >
-          Rust Playground ↗
+          {t.playground}
         </a>
+        <button
+          className="lang-toggle"
+          onClick={toggleLang}
+          title={t.langSwitchTitle}
+          aria-label={t.langSwitchTitle}
+        >
+          <span className="lang-toggle-ico">🌐</span>
+          {t.langSwitchLabel}
+        </button>
         <div className="topbar-social">
           <a
             className="social-link"
             href="https://github.com/buynao/rust-for-frontend"
             target="_blank"
             rel="noreferrer"
-            aria-label="GitHub 仓库"
-            title="GitHub 仓库"
+            aria-label={t.github}
+            title={t.github}
           >
             <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
               <path
@@ -82,11 +96,11 @@ export default function Layout() {
               className="nav-home"
               onClick={() => setOpen(false)}
             >
-              🏠 课程首页
+              {t.navHome}
             </NavLink>
             {groups.map((g, gi) => (
-              <div className="nav-group" key={g.group}>
-                <div className="nav-group-title">{g.group}</div>
+              <div className="nav-group" key={g.group.zh}>
+                <div className="nav-group-title">{loc(g.group, lang)}</div>
                 {g.items.map((ch) => {
                   const idx =
                     groups.slice(0, gi).reduce((n, x) => n + x.items.length, 0) +
@@ -103,7 +117,7 @@ export default function Layout() {
                       </span>
                       <span className="nav-label">
                         <span className="nav-icon">{ch.icon}</span>
-                        {ch.title}
+                        {loc(ch.title, lang)}
                       </span>
                     </NavLink>
                   )
@@ -112,7 +126,7 @@ export default function Layout() {
             ))}
           </nav>
           <div className="sidebar-foot">
-            为前端而写 · 共 {chapters.length} 章
+            {t.sidebarFoot(chapters.length)}
           </div>
         </aside>
 

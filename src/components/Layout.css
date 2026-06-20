@@ -90,6 +90,30 @@
   text-decoration: none;
 }
 
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg-2);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.lang-toggle:hover {
+  color: var(--rust);
+  border-color: var(--rust);
+}
+.lang-toggle-ico {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
 .hamburger {
   display: none;
   flex-direction: column;

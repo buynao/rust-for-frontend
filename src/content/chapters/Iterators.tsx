@@ -2,8 +2,13 @@ import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import { MicroLab } from '../../components/Lab'
 import IteratorViz from '../../components/viz/IteratorViz'
+import { useLang } from '../../i18n/lang'
 
 export default function Iterators() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -194,6 +199,205 @@ rust
         ① <code>Vec</code> 对应 JS Array;② 链式迭代器语法与 JS 几乎一致,但惰性且零成本;
         ③ <code>iter / iter_mut / into_iter</code> 对应借用/可变借用/拿走所有权;④ <code>collect</code> 收集结果。
         下一章把前端离不开的 <code>Map</code> / <code>Set</code> / <code>Object</code> 在 Rust 里的对应物补齐——HashMap 与 HashSet。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        This chapter will feel like coming home: Rust's iterators are exactly the <code>map</code> /
+        <code>filter</code> / <code>reduce</code> chains you use every day. The difference is that Rust's
+        version is <strong>lazy</strong> and <strong>zero-cost</strong>: it reads like a high-level API,
+        but runs like a hand-written for loop.
+      </p>
+
+      <h2>Vec: the equivalent of JS's Array</h2>
+      <p>As mentioned earlier, fixed-length arrays use <code>[T; N]</code>, while the <strong>growable</strong> dynamic array is <code>Vec&lt;T&gt;</code> — that's the real counterpart to a JS Array:</p>
+      <Compare
+        js={`const nums = [1, 2, 3];
+nums.push(4);
+nums.length;       // 4
+nums[0];           // 1`}
+        rust={`let mut nums = vec![1, 2, 3];
+nums.push(4);
+nums.len();        // 4
+nums[0];           // 1`}
+        note="The vec! macro creates one quickly; .push / .len / index access all look familiar. An out-of-bounds index panics in Rust (rather than returning undefined) — for safe access use nums.get(i) to get an Option."
+      />
+
+      <h2>Method chaining: you already know this</h2>
+      <Compare
+        js={`const result = [1, 2, 3, 4, 5]
+  .filter(x => x % 2 === 0)
+  .map(x => x * x)
+  .reduce((a, b) => a + b, 0);
+// 20`}
+        rust={`let result: i32 = (1..=5)
+    .filter(|x| x % 2 == 0)
+    .map(|x| x * x)
+    .sum();
+// 20`}
+        note="Almost a one-to-one translation! |x| ... is a closure (arrow function). The biggest difference: JS allocates a new array at every step, while Rust walks the whole chain in a single pass with no intermediate arrays."
+      />
+
+      <KeyTerm term="lazy evaluation" en="lazy evaluation" analogy="JS's .map().filter() each run immediately and build intermediate arrays; Rust's adapters do nothing until they're 'consumed'.">
+        Methods like <code>map</code> and <code>filter</code> are called <strong>iterator adapters</strong> — they just
+        "set up the pipeline" and don't run right away. Nothing actually happens until a <strong>consumer</strong>
+        (<code>sum</code>, <code>collect</code>, <code>for</code>, etc.) starts pulling data, and then
+        <strong>each element runs through the entire chain at once</strong>. The animation below draws this out:
+      </KeyTerm>
+
+      <Figure
+        title="Animation: a lazy iterator pipeline"
+        caption="The expression (1..=5).filter(|x| x%2==0).map(|x| x*x).sum(). Step through it: odd numbers get dropped at filter, even ones travel all the way to sum, and the whole thing iterates only once."
+      >
+        <IteratorViz />
+      </Figure>
+
+      <Callout kind="warn" title="Forget to consume = nothing happens">
+        Because it's lazy, writing just <code>{'v.iter().map(|x| println!("{x}"))'}</code> without consuming it
+        prints <strong>not a single line</strong>! The compiler will warn you that "this iterator is unused."
+        When you need side effects to run immediately, use a <code>for</code> loop or <code>.for_each(...)</code>.
+      </Callout>
+
+      <h2>The three iters: who takes ownership?</h2>
+      <p>This is the one thing you really need to nail down about iterators — it ties directly to ownership:</p>
+      <CodeBlock
+        title="iter / iter_mut / into_iter"
+        code={`let v = vec![1, 2, 3];
+
+v.iter()        // yields &T (read-only borrow) — v is still usable afterward
+v.iter_mut()    // yields &mut T (mutable borrow) — modify elements in place
+v.into_iter()   // yields T (takes ownership) — v is consumed and can't be used again
+
+// Default behavior of the for loop:
+for x in &v { }      // same as v.iter(), borrows
+for x in &mut v { }  // same as v.iter_mut()
+for x in v { }       // same as v.into_iter(), eats v`}
+      />
+      <Callout kind="rust" title="Memory aid">
+        <code>&v</code> = borrow to read, <code>&mut v</code> = borrow to modify, <code>v</code> = take it outright.
+        Exactly the same ownership/borrowing rules from chapters 4 and 5 — iterators are just an application of them.
+      </Callout>
+
+      <h2>collect: gather the results back into a collection</h2>
+      <p>The consumer <code>collect</code> "collects" an iterator into a collection. You usually need to tell it what type to collect into:</p>
+      <CodeBlock
+        runnable
+        code={`fn main() {
+    // Collect into a Vec (specify the target type with turbofish ::<> or a type annotation)
+    let doubled: Vec<i32> = (1..=5).map(|x| x * 2).collect();
+    println!("{:?}", doubled);
+
+    // Collect into a String
+    let word: String = vec!['r', 'u', 's', 't'].into_iter().collect();
+    println!("{word}");
+
+    // enumerate: grab the index too (like JS's entries / forEach's second argument)
+    for (i, c) in "abc".chars().enumerate() {
+        println!("{i}: {c}");
+    }
+}`}
+        output={`[2, 4, 6, 8, 10]
+rust
+0: a
+1: b
+2: c`}
+      />
+
+      <h2>Common adapters/consumers cheat sheet</h2>
+      <div className="prose">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', color: 'var(--rust)' }}>
+              <th style={c}>JS</th><th style={c}>Rust</th><th style={c}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['.map()', '.map()', 'transform each item'],
+              ['.filter()', '.filter()', 'keep items matching a condition'],
+              ['.reduce()', '.fold(init, f)', 'fold/accumulate'],
+              ['.find()', '.find()', 'find the first match, returns Option'],
+              ['.some()', '.any()', 'is there any item matching?'],
+              ['.every()', '.all()', 'do all items match?'],
+              ['.forEach()', '.for_each()', 'run a side effect on each item'],
+              ['.slice() / take first N', '.take(n) / .skip(n)', 'lazy slicing'],
+              ['.flat()', '.flatten()', 'flatten nesting'],
+              ['Array.from + index', '.enumerate()', 'iterate with an index'],
+            ].map((r) => (
+              <tr key={r[0]} style={{ borderTop: '1px solid var(--line)' }}>
+                <td style={c}><code>{r[0]}</code></td>
+                <td style={c}><code style={{ color: 'var(--rust)' }}>{r[1]}</code></td>
+                <td style={{ ...c, color: 'var(--fg-2)' }}>{r[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Quiz
+        question="What does the line of Rust below print when it runs?"
+        options={[
+          { text: 'Prints 1 2 3' },
+          { text: 'Prints nothing, and the compiler warns that the iterator is unused', correct: true },
+          { text: 'Prints [1, 2, 3]' },
+          { text: 'Compile error, it won’t build' },
+        ]}
+        explain={
+          <>
+            <CodeBlock code={`vec![1, 2, 3].iter().map(|x| println!("{x}"));`} />
+            <code>map</code> is a lazy adapter, and with no consumer to "pull" it, the closure never runs even once. Rust will give you an
+            <code>unused `Map` that must be used</code> warning. To actually print, use
+            <code>{'.for_each(|x| println!("{x}"))'}</code> or a <code>for</code> loop.
+          </>
+        }
+      />
+
+      <h2>Hands-on practice</h2>
+      <MicroLab
+        title="Rewrite a for loop as an iterator chain"
+        minutes={6}
+        goal={
+          <>
+            The code below uses a <code>for</code> loop plus a mutable accumulator to compute "the sum of the squares
+            of all even numbers in <code>1..=10</code>". Rewrite it as a <strong>one-line</strong> iterator chain
+            (<code>filter</code> → <code>map</code> → <code>sum</code>), with the same output (it should be <code>220</code>).
+          </>
+        }
+        starter={`fn main() {
+    let mut sum = 0;
+    for x in 1..=10 {
+        if x % 2 == 0 {
+            sum += x * x;
+        }
+    }
+    println!("{sum}");
+}`}
+        hint={
+          <>
+            Something like <code>{'(1..=10).filter(|x| x % 2 == 0).map(|x| x * x).sum()'}</code>.
+            <code>sum</code> needs to know the result type, so just annotate it with <code>{'let sum: i32 = ...'}</code>.
+          </>
+        }
+        solution={`fn main() {
+    let sum: i32 = (1..=10)
+        .filter(|x| x % 2 == 0)
+        .map(|x| x * x)
+        .sum();
+    println!("{sum}");
+}`}
+        expectedOutput={`220`}
+      />
+
+      <Callout kind="info" title="Key takeaways & what's next">
+        ① <code>Vec</code> maps to JS's Array; ② iterator chaining syntax is nearly identical to JS, but lazy and zero-cost;
+        ③ <code>iter / iter_mut / into_iter</code> correspond to borrow / mutable borrow / take ownership; ④ <code>collect</code> gathers the results.
+        The next chapter fills in the Rust counterparts to the <code>Map</code> / <code>Set</code> / <code>Object</code> that frontend
+        work can't live without — HashMap and HashSet.
       </Callout>
     </>
   )

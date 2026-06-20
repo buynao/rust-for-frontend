@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Quiz, Figure, Pill } from '../../components/Ui'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 export default function Project() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -185,6 +190,205 @@ cargo run -- README.md`}
       <Callout kind="rust" title="最后一句">
         Rust 的学习曲线前陡后缓:啃过所有权与借用这道坎,后面会越来越顺,
         而编译器始终是那个最严格也最靠谱的搭档。带着前端的直觉,你已经迈过了最难的一段。祝玩得开心 🦀
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Enough theory — let's build something that actually runs. We'll write a
+        command-line tool called <code>mdstat</code>: it reads a Markdown file,
+        counts <strong>words, lines, headings, and code blocks</strong>, and prints
+        a little report. It pulls in nearly every concept you've learned so far:
+        ownership, borrowing, structs, Result, <code>?</code>, and iterators.
+      </p>
+
+      <Callout kind="tip" title="Follow along">
+        Every step's code can be copied and run locally (<code>cargo run -- README.md</code>),
+        or pasted into the Rust Playground (swap the file-reading step for an inline
+        string) to play with the logic.
+      </Callout>
+
+      <h2>Step 0: Create the project</h2>
+      <CodeBlock
+        lang="bash"
+        code={`cargo new mdstat
+cd mdstat
+# everything from here goes in src/main.rs`}
+      />
+
+      <Figure title="Program structure" caption="A clean little program: main handles args and printing, the logic is split into pure functions, and the data lives in a struct.">
+        <Flow
+          width={700}
+          height={170}
+          nodes={[
+            { id: 'args', x: 10, y: 60, w: 130, label: 'read CLI args', sub: 'env::args', tone: 'info' },
+            { id: 'read', x: 175, y: 60, w: 130, label: 'read the file', sub: 'fs::read_to_string ?', tone: 'rust' },
+            { id: 'analyze', x: 340, y: 60, w: 130, label: 'analyze()', sub: 'iterator counting', tone: 'rust' },
+            { id: 'stats', x: 505, y: 20, w: 130, label: 'Stats struct', sub: 'holds the results', tone: 'ok' },
+            { id: 'print', x: 505, y: 105, w: 130, label: 'print report', sub: 'println!', tone: 'ok' },
+          ]}
+          edges={[
+            { from: 'args', to: 'read' },
+            { from: 'read', to: 'analyze' },
+            { from: 'analyze', to: 'stats' },
+            { from: 'analyze', to: 'print' },
+          ]}
+        />
+      </Figure>
+
+      <h2>Step 1: Describe the results with a struct</h2>
+      <CodeBlock
+        title="src/main.rs"
+        code={`#[derive(Debug, Default)]   // Debug for easy printing, Default for all-zero initial values
+struct Stats {
+    lines: usize,
+    words: usize,
+    headings: usize,
+    code_blocks: usize,
+}`}
+      />
+      <p>
+        <Pill>Recap</Pill> <code>#[derive(...)]</code> is from Chapter 8 — it auto-generates the <code>Debug</code> and <code>Default</code>
+        implementations so you don't have to write them by hand.
+      </p>
+
+      <h2>Step 2: The core logic — counting with iterators</h2>
+      <p>
+        We take a <strong>borrow</strong> of the file's contents (<code>&str</code>, no
+        ownership transfer — Chapter 5), walk it line by line, and accumulate based on
+        simple pattern checks. Code blocks come in pairs of <code>```</code> fences, so
+        we count fence lines and divide by 2:
+      </p>
+      <CodeBlock
+        title="src/main.rs (continued)"
+        code={`fn analyze(text: &str) -> Stats {
+    let mut stats = Stats::default();
+    let mut fence_count = 0;
+
+    for line in text.lines() {           // .lines() returns an iterator
+        stats.lines += 1;
+        let trimmed = line.trim_start();
+
+        if trimmed.starts_with("\`\`\`") {
+            fence_count += 1;            // hit a \`\`\` fence
+        }
+        if trimmed.starts_with('#') {
+            stats.headings += 1;          // Markdown heading
+        }
+        // split on whitespace and count (blank lines naturally yield 0)
+        stats.words += line.split_whitespace().count();
+    }
+    stats.code_blocks = fence_count / 2;  // fences come in pairs = code blocks
+    stats
+}`}
+      />
+
+      <h2>Step 3: main — read args, read the file, handle errors</h2>
+      <p>
+        Here <code>main</code> reads the args and the file, and bails out cleanly on
+        failure. When the file can't be read, the program prints a friendly error and
+        exits with a non-zero code, instead of dumping a stack trace in your face:
+      </p>
+      <CodeBlock
+        title="src/main.rs (continued)"
+        code={`use std::fs;
+use std::process;
+
+fn main() {
+    // skip arg 0 (the program name), take arg 1: the file path
+    let path = match std::env::args().nth(1) {
+        Some(p) => p,
+        None => {
+            eprintln!("usage: mdstat <file.md>");
+            process::exit(1);
+        }
+    };
+
+    // read the file; on failure, report nicely and exit
+    let text = match fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("failed to read '{path}': {e}");
+            process::exit(1);
+        }
+    };
+
+    let stats = analyze(&text);   // borrow text for analyze
+
+    println!("📊 Report for {path}");
+    println!("───────────────");
+    println!("Lines       : {}", stats.lines);
+    println!("Words       : {}", stats.words);
+    println!("Headings    : {}", stats.headings);
+    println!("Code blocks : {}", stats.code_blocks);
+}`}
+      />
+
+      <h2>Step 4: Run it!</h2>
+      <CodeBlock
+        lang="bash"
+        title="terminal"
+        code={`# args after -- are passed through to your program
+cargo run -- README.md`}
+        output={`📊 Report for README.md
+───────────────
+Lines       : 42
+Words       : 318
+Headings    : 7
+Code blocks : 3`}
+      />
+      <Callout kind="rust" title="You just used the whole course">
+        Ownership and borrowing (passing <code>&str</code>), struct + derive, Result +
+        pattern matching for error handling, iterators (<code>.lines()</code> /{' '}
+        <code>.split_whitespace().count()</code>), expression-based return values — one
+        real little tool ties them all together.
+      </Callout>
+
+      <h2>Step 5: Going further (try it yourself)</h2>
+      <ul>
+        <li>Parse args with the <strong><code>clap</code></strong> crate to support <code>--json</code> output and multiple files. (<code>cargo add clap --features derive</code>)</li>
+        <li>Extract <code>analyze</code> into <code>src/lib.rs</code>, write a <code>#[test]</code> unit test, and verify with <code>cargo test</code>.</li>
+        <li>Add a "reading time" stat: words ÷ 200 words per minute, output as a float with <code>format!</code>.</li>
+        <li>Challenge: add <code>#[wasm_bindgen]</code> to <code>analyze</code>, compile it to Wasm using the approach from the "WebAssembly" chapter, and build a web-based word counter.</li>
+      </ul>
+
+      <Quiz
+        question="Why does analyze take &str (a borrow) instead of String (owned)?"
+        options={[
+          { text: 'Because &str is shorter and saves a few keystrokes' },
+          { text: "Because analyze only needs to read the contents, not own them; borrowing lets main keep using text after the call and avoids an unnecessary copy/move", correct: true },
+          { text: 'Because a String cannot be iterated over' },
+          { text: 'Because &str runs faster and String is simply wrong here' },
+        ]}
+        explain={
+          <>
+            "Read-only, no ownership" calls for a borrow (<code>&str</code>/<code>&String</code>) —
+            exactly the heart of Chapter 5. If you took a <code>String</code> parameter,
+            <code>text</code>'s ownership would move into the function, and <code>main</code>{' '}
+            couldn't use it afterward. Both versions compile, but borrowing better matches the
+            "I'm just looking" intent — and it's more efficient.
+          </>
+        }
+      />
+
+      <h2>🎓 You've graduated — now what?</h2>
+      <p>You've walked the full path from "why learn it" to "building something." Directions to keep leveling up:</p>
+      <ul>
+        <li>📕 <strong>The Rust Programming Language</strong> (the official "The Book") — fill in the details systematically.</li>
+        <li>🧩 <strong>Rustlings</strong> — hundreds of compiler-driven mini-exercises you learn by fixing.</li>
+        <li>🏗️ Real projects: build a web API with <code>axum</code>/<code>actix</code>, or a desktop app with <code>tauri</code>.</li>
+        <li>🕸️ Frontend angle: rewrite a slow pure-compute module from your team in Rust + Wasm, and share a before/after benchmark.</li>
+      </ul>
+
+      <Callout kind="rust" title="One last thing">
+        Rust's learning curve is steep up front and gentle after: once you've climbed the
+        ownership-and-borrowing hill, everything downstream gets smoother — and the compiler
+        stays your strictest, most reliable partner. With your frontend intuition, you've
+        already cleared the hardest stretch. Have fun out there 🦀
       </Callout>
     </>
   )

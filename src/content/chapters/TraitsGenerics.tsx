@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz } from '../../components/Ui'
 import { ErrorDrill } from '../../components/Lab'
+import { useLang } from '../../i18n/lang'
 
 export default function TraitsGenerics() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -217,6 +222,231 @@ help: consider restricting type parameter \`T\`
         ① 泛型语法同 TS,但靠单态化做到零开销;② trait 是可「事后实现」的接口,还能有默认方法;
         ③ <code>T: Trait</code> 是类型约束;④ <code>#[derive]</code> 自动生成常用实现。
         下一章我们看 trait 的一个绝佳应用——闭包(<code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>),也就是你天天写的箭头函数在 Rust 里的样子。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        This chapter is about Rust's tools for <strong>abstraction</strong>: <strong>generics</strong>
+        (you've used these in TS) and <strong>traits</strong> (like interfaces, but more powerful).
+        Together they let you reuse code while keeping full type safety and zero runtime overhead.
+      </p>
+
+      <h2>Generics: almost identical to TS</h2>
+      <Compare
+        js={`// TS generic function
+function first<T>(arr: T[]): T {
+  return arr[0];
+}
+
+class Stack<T> {
+  items: T[] = [];
+}`}
+        rust={`// Rust generic function
+fn first<T>(arr: &[T]) -> &T {
+    &arr[0]
+}
+
+struct Stack<T> {
+    items: Vec<T>,
+}`}
+        note="The syntax is basically the same: angle brackets <T>, multiple type parameters allowed. The difference is that Rust generics generate specialized code for each concrete type at compile time (monomorphization), so there's zero runtime cost."
+      />
+
+      <KeyTerm term="monomorphization" en="monomorphization" analogy="Like TS types disappearing after compilation—but Rust goes further: it generates separate machine code for first<i32> and first<String>, with no dynamic lookup when you call them.">
+        Generic code gets "expanded" at compile time into a concrete version for each actual type. The upside
+        is runtime performance identical to hand-written specialized code; the cost is a potentially larger
+        binary and slower compiles. This is one of the ways "zero-cost abstraction" is implemented.
+      </KeyTerm>
+
+      <h2>Traits: interfaces, leveled up</h2>
+      <p>
+        A <code>trait</code> defines "a contract of methods," and any type can <strong>implement</strong> it—
+        you can even implement your own trait for the standard library's types or someone else's types
+        (which is more flexible than a TS interface):
+      </p>
+      <Compare
+        js={`interface Summary {
+  summarize(): string;
+}
+
+class Article implements Summary {
+  constructor(public title: string) {}
+  summarize() {
+    return \`Article: \${this.title}\`;
+  }
+}`}
+        rust={`trait Summary {
+    fn summarize(&self) -> String;
+}
+
+struct Article { title: String }
+
+impl Summary for Article {
+    fn summarize(&self) -> String {
+        format!("Article: {}", self.title)
+    }
+}`}
+        note="TS uses implements right at the class definition; Rust uses a separate impl Trait for Type block, fully decoupling data from behavior—and letting you add capabilities to existing types after the fact."
+      />
+
+      <h3>Default methods</h3>
+      <p>A trait can give a method a default implementation, so implementers can use it without overriding—like an interface that ships with default logic:</p>
+      <CodeBlock
+        runnable
+        code={`trait Greet {
+    fn name(&self) -> String;
+    // Default method: built on top of name(), can be overridden
+    fn hello(&self) -> String {
+        format!("Hi, I'm {}", self.name())
+    }
+}
+
+struct Cat;
+impl Greet for Cat {
+    fn name(&self) -> String { "Whiskers".into() }
+    // No hello() — just uses the default implementation
+}
+
+fn main() {
+    println!("{}", Cat.hello());
+}`}
+        output={`Hi, I'm Whiskers`}
+      />
+
+      <h2>Trait bounds: type guardrails for generics</h2>
+      <p>
+        Want to write a function that "handles anything summarizable"? Use a trait as a <strong>bound</strong>,
+        telling the compiler "this generic T must implement Summary":
+      </p>
+      <CodeBlock
+        code={`// Style 1: impl Trait (concise)
+fn notify(item: &impl Summary) {
+    println!("Breaking! {}", item.summarize());
+}
+
+// Style 2: generic + bound (equivalent, lets you reuse T)
+fn notify2<T: Summary>(item: &T) {
+    println!("Breaking! {}", item.summarize());
+}
+
+// Multiple bounds with +
+fn show<T: Summary + Clone>(item: &T) { /* ... */ }`}
+      />
+      <Callout kind="tip" title="Compared to TS">
+        In TS you'd write <code>{'function notify<T extends Summary>(item: T)'}</code>.
+        Rust's <code>{'T: Summary'}</code> means the same thing: "T must satisfy this capability."
+      </Callout>
+
+      <h2>derive: auto-implement common traits in one line</h2>
+      <p>
+        Many traits (printing, comparing, cloning) have mechanical implementations, so Rust uses <code>#[derive(...)]</code> to generate them for you:
+      </p>
+      <CodeBlock
+        runnable
+        code={`#[derive(Debug, Clone, PartialEq)]
+struct Point { x: i32, y: i32 }
+
+fn main() {
+    let a = Point { x: 1, y: 2 };
+    let b = a.clone();            // Clone comes from derive
+    println!("{:?}", a);          // Debug makes {:?} work
+    println!("equal? {}", a == b); // PartialEq makes == work
+}`}
+        output={`Point { x: 1, y: 2 }
+equal? true`}
+      />
+      <Callout kind="rust" title="The ones you'll derive most">
+        <code>Debug</code> (print with <code>{'{:?}'}</code>, essential for debugging), <code>Clone</code> (deep copy),
+        <code>PartialEq</code> (enables <code>==</code>), <code>Copy</code> (small stack types),
+        <code>Default</code> (default values). When you see <code>#[derive(...)]</code> above a struct, that's it
+        "freeloading" these implementations.
+      </Callout>
+
+      <h2>Static dispatch vs. dynamic dispatch</h2>
+      <p>
+        When you want to put objects of "different types that all implement some trait" into one collection, use <code>dyn Trait</code>
+        (dynamic dispatch, like a JS array holding different objects with methods looked up at runtime):
+      </p>
+      <CodeBlock
+        code={`// Static dispatch: type fixed at compile time, fastest (the default choice)
+fn area_static(s: &impl Shape) -> f64 { s.area() }
+
+// Dynamic dispatch: method looked up at runtime via a "vtable", flexible but with a tiny cost
+let shapes: Vec<Box<dyn Shape>> = vec![
+    Box::new(Circle { r: 1.0 }),
+    Box::new(Rect { w: 2.0, h: 3.0 }),
+];
+for s in &shapes {
+    println!("{}", s.area());  // which area() to call is decided at runtime
+}`}
+      />
+
+      <Quiz
+        question="Why can Rust's generics achieve 'zero runtime overhead'?"
+        options={[
+          { text: "Because generic code never actually runs" },
+          { text: 'Because the compiler generates specialized code for each concrete type used (monomorphization), so no type checks or dynamic lookups are needed at runtime', correct: true },
+          { text: 'Because generics can only be used with number types' },
+          { text: 'Because Rust caches type information at runtime' },
+        ]}
+        explain={
+          <>
+            Monomorphization expands <code>{'first<T>'}</code> at compile time into concrete versions like
+            <code>{'first_i32'}</code> and <code>{'first_String'}</code>; the resulting machine code is exactly
+            like a hand-written specialized function, so there's no runtime cost. You only reach for <code>dyn</code>
+            (dynamic dispatch) when you need runtime flexibility.
+          </>
+        }
+      />
+
+      <h2>Error drill</h2>
+      <ErrorDrill
+        code={`fn largest<T>(list: &[T]) -> &T {
+    let mut biggest = &list[0];
+    for item in list {
+        if item > biggest {   // want to compare sizes
+            biggest = item;
+        }
+    }
+    biggest
+}`}
+        error={`error[E0369]: binary operation \`>\` cannot be applied to type \`&T\`
+ --> src/main.rs:4:17
+  |
+4 |         if item > biggest {
+  |            ---- ^ ------- &T
+  |            |
+  |            &T
+  |
+help: consider restricting type parameter \`T\`
+  |
+1 | fn largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
+  |             +++++++++++++++++++++++`}
+        question="Why can't a generic T be compared directly with >? How do you fix it?"
+        options={[
+          { text: 'A bare T can be any type and isn’t guaranteed to be comparable; add the bound T: PartialOrd to declare "T must be comparable"', correct: true },
+          { text: 'Generics can never be compared; you must replace T with a concrete type like i32' },
+          { text: 'You should replace > with a method called .greater()' },
+          { text: 'Adding #[derive(PartialOrd)] to the function would fix it' },
+        ]}
+        explain={
+          <>
+            The generic <code>T</code> stands for "any type," and not every type supports <code>&gt;</code>. To use <code>&gt;</code>,
+            you add the <strong>trait bound</strong> <code>T: PartialOrd</code> to tell the compiler "the T the caller passes in must be comparable."
+            Notice the compiler even <strong>hands you the fix</strong>—learning to read these <code>help:</code> lines is a key habit for productive Rust work.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key takeaways & what's next">
+        (1) Generic syntax matches TS, but monomorphization makes it zero-overhead; (2) traits are interfaces you can "implement after the fact," and they can have default methods;
+        (3) <code>T: Trait</code> is a type bound; (4) <code>#[derive]</code> auto-generates common implementations.
+        Next chapter we'll look at a perfect application of traits—closures (<code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>), which is what the arrow functions you write every day look like in Rust.
       </Callout>
     </>
   )

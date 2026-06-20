@@ -5,6 +5,7 @@ import './styles/global.css'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import ChapterPage from './pages/ChapterPage'
+import { LangProvider } from './i18n/lang'
 import { chapters } from './content/chapters'
 
 const router = createHashRouter([
@@ -25,6 +26,8 @@ const router = createHashRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <LangProvider>
+      <RouterProvider router={router} />
+    </LangProvider>
   </React.StrictMode>,
 )

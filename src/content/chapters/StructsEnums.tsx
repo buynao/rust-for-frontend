@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz } from '../../components/Ui'
 import { ErrorDrill } from '../../components/Lab'
+import { useLang } from '../../i18n/lang'
 
 export default function StructsEnums() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -211,6 +216,221 @@ fn name(s: Shape) -> &'static str {
         ① struct 描述形状、impl 写方法;② enum 能携带数据,是强大的建模工具;③ <code>Option</code> 取代 null;
         ④ match 模式匹配 + 穷尽检查是 Rust 的杀手锏。下一章我们看另一个明星枚举 <code>Result</code>,
         以及 Rust 如何彻底改造「错误处理」。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Now that ownership is behind us, let's model some data. Rust uses <strong>struct</strong> to describe
+        "a bundle of fields" (like a TS <code>interface</code>), and <strong>enum</strong> to describe
+        "one of several possibilities" (like a TS union type, but more powerful). Pair them with
+        <strong>match</strong> pattern matching and you'll fall in love with the combo.
+      </p>
+
+      <h2>Structs: the interface you already know, leveled up</h2>
+      <Compare
+        js={`interface User {
+  name: string;
+  age: number;
+  active: boolean;
+}
+const u: User = {
+  name: "Ada", age: 36, active: true
+};`}
+        rust={`struct User {
+    name: String,
+    age: u32,
+    active: bool,
+}
+let u = User {
+    name: String::from("Ada"),
+    age: 36,
+    active: true,
+};`}
+        note="The shape is almost identical to a TS interface. The difference: a Rust struct is both the 'shape' and the 'thing' — there's no runtime duck typing, so the type has to match exactly."
+      />
+
+      <h3>Adding methods to a struct: the impl block</h3>
+      <p>
+        Rust writes <strong>data (struct)</strong> and <strong>behavior (methods)</strong> separately: methods live in an <code>impl</code> block.
+        A method's first parameter is <code>&self</code> (borrowing yourself, the analog of JS <code>this</code>):
+      </p>
+      <CodeBlock
+        runnable
+        title="Methods and associated functions"
+        code={`struct Rect {
+    width: u32,
+    height: u32,
+}
+
+impl Rect {
+    // Associated function (no self) — like a static factory method, often used as a constructor
+    fn new(w: u32, h: u32) -> Rect {
+        Rect { width: w, height: h }
+    }
+    // Method: &self borrows self, read-only
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+    // Mutable method: &mut self is required to change fields
+    fn scale(&mut self, factor: u32) {
+        self.width *= factor;
+        self.height *= factor;
+    }
+}
+
+fn main() {
+    let mut r = Rect::new(3, 4);   // :: calls an associated function
+    println!("area = {}", r.area()); // . calls a method
+    r.scale(2);
+    println!("after scaling = {}", r.area());
+}`}
+        output={`area = 12
+after scaling = 48`}
+      />
+      <Callout kind="tip" title="::  vs  .">
+        <code>Rect::new()</code> uses the double colon to call an "associated function" (no self, like a static method);
+        <code>r.area()</code> uses the dot to call a "method" (has self). <code>String::from()</code> works the same way.
+      </Callout>
+
+      <h2>Enums: union types that carry cargo</h2>
+      <p>
+        A TS union like <code>"a" | "b"</code> can only express "which one is it". Rust's <code>enum</code> goes further:
+        <strong>each variant can also carry data of a different type</strong>. This is called an "algebraic data type", and it's an incredibly expressive modeling tool:
+      </p>
+      <Compare
+        js={`// TS simulates this with a "discriminated union"
+type Shape =
+  | { kind: "circle"; r: number }
+  | { kind: "rect"; w: number; h: number };
+
+function area(s: Shape): number {
+  switch (s.kind) {
+    case "circle": return 3.14 * s.r * s.r;
+    case "rect": return s.w * s.h;
+  }
+}`}
+        rust={`enum Shape {
+    Circle { r: f64 },
+    Rect { w: f64, h: f64 },
+}
+
+fn area(s: &Shape) -> f64 {
+    match s {
+        Shape::Circle { r } => 3.14 * r * r,
+        Shape::Rect { w, h } => w * h,
+    }   // match must cover every variant, or it won't compile
+}`}
+        note="Rust supports this 'tag + data' enum natively — no need to hand-add a kind field. And match forces you to handle every variant: add a new Shape and forget to handle it? Compiler error."
+      />
+
+      <KeyTerm term="Option:Rust has no null" en="Option<T>" analogy="Replaces JS's null / undefined. 'There might be no value' is encoded into the type, and the compiler forces you to handle the empty case.">
+        The most important enum in Rust's standard library is <code>Option</code>, and it has just two variants:
+        <CodeBlock code={`enum Option<T> {
+    Some(T),   // has a value of type T
+    None,      // no value
+}`} />
+        So cases like "user not found" or "array out of bounds" return an <code>Option</code>, and you <strong>must unwrap it first</strong> before using the value inside —
+        which eliminates <code>undefined is not a function</code> at the language level.
+      </KeyTerm>
+
+      <h2>match: pattern matching that beats switch</h2>
+      <p>The most direct way to unwrap an <code>Option</code> is <code>match</code>, which can <strong>bind</strong> the inner value as it matches:</p>
+      <CodeBlock
+        runnable
+        code={`fn first_char(s: &str) -> Option<char> {
+    s.chars().next()   // an empty string returns None
+}
+
+fn main() {
+    let inputs = ["hello", ""];
+    for s in inputs {
+        match first_char(s) {
+            Some(c) => println!("first char is '{c}'", ),
+            None => println!("empty string, no first char"),
+        }
+    }
+}`}
+        output={`first char is 'h'
+empty string, no first char`}
+      />
+
+      <h3>Only care about one case? Use if let</h3>
+      <p>When you only want to handle <code>Some</code> and ignore <code>None</code>, <code>match</code> feels verbose — reach for <code>if let</code>:</p>
+      <Compare
+        js={`const c = firstChar(s);
+if (c !== undefined) {
+  console.log(c);
+}`}
+        rust={`if let Some(c) = first_char(s) {
+    println!("{c}");
+}
+// You can also add an else:
+// if let Some(c) = ... { } else { }`}
+        note="if let is syntactic sugar for match, perfect when you only care about one branch. let...else is great for 'bail out early if you can't get it'."
+      />
+
+      <Quiz
+        question="Why is Rust's enum considered safer than TypeScript's union type?"
+        options={[
+          { text: 'Because enums run faster' },
+          { text: 'Because match forces exhaustiveness over all variants: add a new variant and every match that does not handle it fails to compile, forcing you to fill it in', correct: true },
+          { text: 'Because enums cannot carry data, making them simpler' },
+          { text: 'Because TS has no union types' },
+        ]}
+        explain={
+          <>
+            Exhaustiveness checking is the key: add a <code>Triangle</code> variant to <code>Shape</code>, and
+            every <code>match s</code> that doesn't handle it will fail to compile. A TS switch doesn't force this by default (it takes extra tricks).
+            That makes "missing a spot" during a refactor almost impossible.
+          </>
+        }
+      />
+
+      <h2>Error drill</h2>
+      <ErrorDrill
+        code={`enum Shape { Circle, Square, Triangle }
+
+fn name(s: Shape) -> &'static str {
+    match s {
+        Shape::Circle => "circle",
+        Shape::Square => "square",
+    }
+}`}
+        error={`error[E0004]: non-exhaustive patterns: \`Shape::Triangle\` not covered
+ --> src/main.rs:4:11
+  |
+1 | enum Shape { Circle, Square, Triangle }
+  |                              -------- not covered
+...
+4 |     match s {
+  |           ^ pattern \`Shape::Triangle\` not covered
+  |
+  = help: ensure that all possible cases are being handled`}
+        question="What is the compiler complaining about, and which fix is best?"
+        options={[
+          { text: 'match must be exhaustive over all variants of the enum; Triangle is missing here. Add `Shape::Triangle => "triangle"`, or use a `_ =>` catch-all', correct: true },
+          { text: 'enums cannot be used in match; switch to if/else' },
+          { text: 'Shape needs #[derive(Debug)]' },
+          { text: 'The &static str return type of the function is wrong' },
+        ]}
+        explain={
+          <>
+            This is match's <strong>exhaustiveness check</strong>: miss one variant and it won't compile. The value of this is —
+            when you later add a variant to <code>Shape</code>, every <code>match</code> that doesn't cover it errors out, forcing you to fill it in,
+            and stamping out "missed a spot". A <code>_ =&gt;</code> catch-all compiles, but it <strong>loses</strong> that reminder when you add a variant, so use it sparingly.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key points & next step">
+        (1) struct describes shape, impl holds methods; (2) enums can carry data and are a powerful modeling tool; (3) <code>Option</code> replaces null;
+        (4) match pattern matching plus exhaustiveness checking is Rust's killer feature. Next chapter we'll look at another star enum, <code>Result</code>,
+        and how Rust completely reinvents "error handling".
       </Callout>
     </>
   )

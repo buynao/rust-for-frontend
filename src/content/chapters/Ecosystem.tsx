@@ -1,6 +1,7 @@
 import { Callout, Quiz, Figure, Pill } from '../../components/Ui'
 import CodeBlock from '../../components/CodeBlock'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 interface Crate {
   name: string
@@ -57,7 +58,61 @@ const groups: { title: string; icon: string; crates: Crate[] }[] = [
   },
 ]
 
+const groupsEn: { title: string; icon: string; crates: Crate[] }[] = [
+  {
+    title: 'Serialization / Data',
+    icon: '🔄',
+    crates: [
+      { name: 'serde + serde_json', desc: 'Serialize/deserialize JSON, YAML, TOML, etc. — the de facto standard', npm: 'JSON.parse + zod' },
+      { name: 'csv', desc: 'Read/write CSV', npm: 'papaparse' },
+      { name: 'regex', desc: 'Regular expressions', npm: 'built-in RegExp' },
+    ],
+  },
+  {
+    title: 'Web backend / Networking',
+    icon: '🌐',
+    crates: [
+      { name: 'axum / actix-web', desc: 'Web frameworks (routing, middleware, extractors)', npm: 'express / fastify' },
+      { name: 'reqwest', desc: 'HTTP client', npm: 'axios / fetch' },
+      { name: 'tokio', desc: 'Async runtime (event loop, timers, IO)', npm: "Node's event loop" },
+      { name: 'sqlx / diesel', desc: 'Database access (compile-time-checked SQL)', npm: 'prisma / knex' },
+    ],
+  },
+  {
+    title: 'Command-line tools',
+    icon: '⌨️',
+    crates: [
+      { name: 'clap', desc: 'Argument parsing (subcommands, help, completions)', npm: 'commander / yargs' },
+      { name: 'indicatif', desc: 'Progress bars and spinners', npm: 'ora / cli-progress' },
+      { name: 'anyhow / thiserror', desc: 'Error handling (anyhow for apps, thiserror for libraries)', npm: 'custom Error classes' },
+    ],
+  },
+  {
+    title: 'Frontend / Wasm / Desktop',
+    icon: '🕸️',
+    crates: [
+      { name: 'wasm-bindgen / wasm-pack', desc: 'Rust ↔ JS bindings and bundling', npm: '— (Rust-specific)' },
+      { name: 'tauri', desc: 'Desktop app framework with a frontend-built UI', npm: 'electron' },
+      { name: 'leptos / yew', desc: 'Rust frontend frameworks (fine-grained reactive / React-like)', npm: 'solid / react' },
+    ],
+  },
+  {
+    title: 'General-purpose utilities',
+    icon: '🧰',
+    crates: [
+      { name: 'rayon', desc: 'Parallelize an iterator in one line: par_iter()', npm: '— (hard to do in JS)' },
+      { name: 'chrono / time', desc: 'Date and time', npm: 'date-fns / dayjs' },
+      { name: 'rand', desc: 'Random numbers', npm: 'a beefed-up Math.random' },
+      { name: 'itertools', desc: 'More iterator adapters', npm: "lodash's iteration helpers" },
+    ],
+  },
+]
+
 export default function Ecosystem() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -190,6 +245,151 @@ let sum: i64 = (0..1_000_000_i64).into_par_iter().map(|x| x * 2).sum();
         ① crate 在 crates.io,<code>cargo add</code> 安装,docs.rs 看文档;② 按用途记住几个主力:
         serde(序列化)、tokio/axum(异步/Web)、clap(CLI)、rayon(并行)、wasm-bindgen/tauri(前端/桌面);
         ③ 一份核心逻辑可被 CLI / Web / Wasm 复用。下一章先逛逛 Rust 的"名人堂"——那些你可能天天在用的明星开源项目。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Now that the language is under your belt, getting real work done comes down to the ecosystem. Rust packages are
+        called <strong>crates</strong>, and they all live on <strong>crates.io</strong> (≈ npmjs.com). This chapter is a
+        <strong> cheat-sheet map</strong>: it sorts the most popular crates by purpose and points out their
+        counterparts in the frontend world, so you always know where to look.
+      </p>
+
+      <Callout kind="rust" title="How to find &amp; how to add">
+        To find packages, browse <strong>crates.io</strong> or <strong>lib.rs</strong> (which has nicer category
+        browsing); for docs, go to <strong>docs.rs</strong> (auto-generated for every crate, and the quality is
+        excellent). Adding a dependency is a one-liner: <code>cargo add package-name</code> (≈ <code>npm install</code>).
+      </Callout>
+
+      <Figure title="The Rust ecosystem at a glance: starting from a single crate" caption="One piece of core logic (a core crate) can be reused across three different 'shells' — a command-line tool, a web service, and Wasm. This is exactly the role Rust plays in frontend infrastructure.">
+        <Flow
+          width={700}
+          height={210}
+          nodes={[
+            { id: 'core', x: 270, y: 90, w: 160, label: 'Your core logic', sub: 'core crate', tone: 'rust' },
+            { id: 'cli', x: 30, y: 20, w: 150, label: 'CLI tool', sub: 'clap + anyhow', tone: 'info' },
+            { id: 'web', x: 30, y: 160, w: 150, label: 'Web service', sub: 'axum + tokio', tone: 'ok' },
+            { id: 'wasm', x: 520, y: 20, w: 160, label: 'Browser Wasm', sub: 'wasm-bindgen', tone: 'ok' },
+            { id: 'desktop', x: 520, y: 160, w: 160, label: 'Desktop app', sub: 'tauri', tone: 'warn' },
+          ]}
+          edges={[
+            { from: 'core', to: 'cli', side: 'h' },
+            { from: 'core', to: 'web', side: 'h' },
+            { from: 'core', to: 'wasm', side: 'h' },
+            { from: 'core', to: 'desktop', side: 'h' },
+          ]}
+        />
+      </Figure>
+
+      <h2>Category cheat sheet</h2>
+      {groupsEn.map((g) => (
+        <div key={g.title} style={{ margin: '1.6rem 0' }}>
+          <h3 style={{ marginBottom: 10 }}>{g.icon} {g.title}</h3>
+          <div className="prose">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: 'var(--rust)' }}>
+                  <th style={cell}>crate</th>
+                  <th style={cell}>What it does</th>
+                  <th style={cell}>Frontend analogy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.crates.map((cr) => (
+                  <tr key={cr.name} style={{ borderTop: '1px solid var(--line)' }}>
+                    <td style={cell}><code style={{ color: 'var(--rust)' }}>{cr.name}</code></td>
+                    <td style={{ ...cell, color: 'var(--fg-1)' }}>{cr.desc}</td>
+                    <td style={{ ...cell, color: 'var(--fg-3)' }}>{cr.npm}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      <h2>The two to meet first: serde and rayon</h2>
+      <p>
+        <Pill>serde</Pill> is the "plumbing" of the Rust ecosystem — almost every project uses it for serialization.
+        Paired with <code>#[derive]</code>, converting between a struct and JSON takes just a few lines:
+      </p>
+      <CodeBlock
+        runnable
+        title="serde: struct ↔ JSON"
+        code={`// Cargo.toml: serde = { version = "1", features = ["derive"] }
+//             serde_json = "1"
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct User { name: String, age: u32 }
+
+fn main() {
+    let json = r#"{"name":"Ada","age":36}"#;
+    // JSON → struct (like JSON.parse, but type-safe)
+    let user: User = serde_json::from_str(json).unwrap();
+    println!("{} is {} years old", user.name, user.age);
+
+    // struct → JSON (like JSON.stringify)
+    let back = serde_json::to_string(&user).unwrap();
+    println!("{back}");
+}`}
+        output={`Ada is 36 years old
+{"name":"Ada","age":36}`}
+      />
+      <p>
+        <Pill>rayon</Pill> shows off the magic of Rust concurrency: swap <code>.iter()</code> for <code>.par_iter()</code>
+        and a sequential iterator turns into <strong>multi-core parallelism</strong>. And thanks to the ownership rules,
+        the compiler guarantees there are <strong>no data races</strong>:
+      </p>
+      <CodeBlock
+        title="rayon: parallelize in one line"
+        code={`use rayon::prelude::*;
+
+// Sequential: .iter()
+let sum: i64 = (0..1_000_000).map(|x| x * 2).sum();
+
+// Parallel: just swap .iter for .par_iter to saturate every CPU core
+let sum: i64 = (0..1_000_000_i64).into_par_iter().map(|x| x * 2).sum();
+// Want to do this in JS? You'd spin up Workers, postMessage, manually shard... Rust does it in one word`}
+      />
+
+      <Callout kind="tip" title="Tips for picking a crate">
+        Check: ① is it actively maintained, ② its download count (crates.io shows it), and ③ are the docs solid
+        (docs.rs). For an <strong>application</strong>, <code>anyhow</code> makes error handling easy; for a
+        <strong> library you ship to others</strong>, use <code>thiserror</code> to define clear error types. For the
+        web, go with <code>axum</code> (backed by the tokio team, and the new mainstream of the ecosystem).
+      </Callout>
+
+      <Quiz
+        question="You want to turn an existing sequential iterator computation into one that fully uses your multi-core CPU. What's the easiest Rust approach?"
+        options={[
+          { text: 'Manually spawn a bunch of threads with std::thread::spawn and shard the work yourself' },
+          { text: 'Pull in rayon, swap .iter() for .par_iter(), and leave the rest of the code basically unchanged', correct: true },
+          { text: 'Rust cannot do parallelism — you have to stay sequential' },
+          { text: 'Switch to async/await' },
+        ]}
+        explain={
+          <>
+            <code>rayon</code> provides "parallel iterators": in most cases you just swap
+            <code>iter()</code>/<code>into_iter()</code> for <code>par_iter()</code>/<code>into_par_iter()</code>, and it
+            automatically distributes the work across a thread pool to saturate every core. Meanwhile, the ownership and
+            <code>Send</code>/<code>Sync</code> rules guarantee none of this has data races — something JS can't pull off
+            nearly as easily.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key points &amp; what's next">
+        ① Crates live on crates.io, <code>cargo add</code> installs them, and docs.rs has the documentation. ② Remember a
+        few workhorses by purpose: serde (serialization), tokio/axum (async/web), clap (CLI), rayon (parallelism),
+        wasm-bindgen/tauri (frontend/desktop). ③ A single piece of core logic can be reused across CLI / Web / Wasm. The
+        next chapter takes a stroll through Rust's "hall of fame" — the star open-source projects you may well be using
+        every day.
       </Callout>
     </>
   )

@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 export default function Wasm() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -148,6 +153,172 @@ function App() {
         ① Wasm 让 Rust 在浏览器里近原生速度运行,与 JS 互补;② <code>wasm-bindgen</code> + <code>wasm-pack</code> 自动生成胶水;
         ③ 在 React 里 <code>init()</code> 后即可像普通函数调用;④ 注意跨边界的数据开销。
         下一章先纵览 Rust 的 crate 生态地图,然后在收官章把所学串成一个能跑的命令行小工具!
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Here's the part frontend folks get most excited about. <strong>WebAssembly
+        (Wasm)</strong> is a binary format that runs in the browser at near-native
+        speed. Compile Rust to Wasm and you can run high-performance code right on a
+        web page, calling <strong>back and forth</strong> with JS — this is Rust's
+        most direct payoff for frontend developers.
+      </p>
+
+      <h2>What Wasm is — and isn't</h2>
+      <ul>
+        <li>✅ It's a <strong>compile target</strong>: C/C++/Rust and others all compile to <code>.wasm</code> and run fast inside the browser sandbox.</li>
+        <li>✅ It <strong>complements</strong> JS: JS handles the DOM, events, and glue; Wasm handles the compute-heavy core.</li>
+        <li>❌ It does <strong>not</strong> replace JS, and it can't touch the DOM directly (it goes through JS).</li>
+      </ul>
+      <Callout kind="rust" title="When is Wasm worth it?">
+        Image/video processing, audio codecs, encryption, physics/game engines,
+        complex data parsing, CAD, spreadsheet calculation… any pure computation
+        that's "too slow in JS but awkward to push to a server" is Wasm's home turf.
+        Figma, Photoshop Web, and Google Earth all do exactly this.
+      </Callout>
+
+      <h2>The toolchain: wasm-pack + wasm-bindgen</h2>
+      <p>
+        The Rust ecosystem hides all of Wasm's fiddly details for you. The core is a
+        two-piece set: <code>wasm-bindgen</code> (auto-generates the glue code between
+        Rust and JS) and <code>wasm-pack</code> (one command to bundle it into a
+        module that npm/bundlers can use).
+      </p>
+
+      <Figure title="Rust → Wasm → your frontend project" caption="The pkg/ directory wasm-pack produces holds the .wasm file + auto-generated .js glue + .d.ts type declarations — import it directly, with native support in Vite/webpack.">
+        <Flow
+          width={720}
+          height={170}
+          nodes={[
+            { id: 'rs', x: 10, y: 60, w: 110, label: 'lib.rs', sub: 'Rust source', tone: 'rust' },
+            { id: 'pack', x: 160, y: 60, w: 140, label: 'wasm-pack build', sub: 'compile + bind', tone: 'info' },
+            { id: 'pkg', x: 350, y: 60, w: 130, label: 'pkg/', sub: '.wasm + .js + .d.ts', tone: 'ok' },
+            { id: 'app', x: 540, y: 30, w: 160, label: 'import into React', sub: 'Vite / webpack', tone: 'ok' },
+            { id: 'npm', x: 540, y: 105, w: 160, label: 'publish to npm', sub: 'for others to use', tone: 'muted' },
+          ]}
+          edges={[
+            { from: 'rs', to: 'pack' },
+            { from: 'pack', to: 'pkg' },
+            { from: 'pkg', to: 'app' },
+            { from: 'pkg', to: 'npm' },
+          ]}
+        />
+      </Figure>
+
+      <h2>Write a Rust function JS can call</h2>
+      <p>The key is annotating the function with <code>#[wasm_bindgen]</code> to export it to JS:</p>
+      <CodeBlock
+        title="src/lib.rs"
+        code={`use wasm_bindgen::prelude::*;
+
+// A function exported for JS to call
+#[wasm_bindgen]
+pub fn fib(n: u32) -> u64 {
+    match n {
+        0 => 0,
+        1 => 1,
+        _ => {
+            let (mut a, mut b) = (0u64, 1u64);
+            for _ in 2..=n { let t = a + b; a = b; b = t; }
+            b
+        }
+    }
+}
+
+// It can also take/return strings — bindgen handles the encoding conversion
+#[wasm_bindgen]
+pub fn greet(name: &str) -> String {
+    format!("Hi {name}, from Rust+Wasm!")
+}`}
+      />
+      <CodeBlock
+        lang="bash"
+        title="Build"
+        code={`# install once
+cargo install wasm-pack
+
+# build for bundlers (Vite/webpack), output lands in pkg/
+wasm-pack build --target bundler`}
+      />
+
+      <h2>Using it in React</h2>
+      <p>
+        Loading a Wasm module is async (it first has to fetch + compile the{' '}
+        <code>.wasm</code>), so you typically initialize it in a <code>useEffect</code>.
+        After that, calling a Rust function is exactly like calling a regular JS
+        function:
+      </p>
+      <Compare
+        jsLang="tsx"
+        jsTitle="Pure JS (slow)"
+        rustTitle="Calling Rust+Wasm (fast)"
+        js={`function fib(n: number): number {
+  if (n < 2) return n;
+  let a = 0, b = 1;
+  for (let i = 2; i <= n; i++)
+    [a, b] = [b, a + b];
+  return b;
+}
+// the main thread stalls under heavy computation`}
+        rust={`import { useEffect, useState } from "react";
+import init, { fib } from "./pkg/my_wasm";
+
+function App() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { init().then(() => setReady(true)); }, []);
+
+  if (!ready) return <p>Loading Wasm…</p>;
+  return <p>fib(50) = {String(fib(50))}</p>;
+}`}
+        note="Once init() resolves, fib is just an ordinary function. For heavy work (big numbers, image convolution, parsing), Wasm is typically several times faster than JS, with steadier performance."
+      />
+
+      <KeyTerm term="Crossing the boundary has a cost" en="the boundary cost" analogy="Like postMessage between the main thread and a Web Worker: moving big chunks of data means serializing/copying, so frequent tiny calls can actually end up slower than plain JS.">
+        Primitive types like numbers cross the JS↔Wasm boundary almost for free, but
+        complex objects and large arrays need copying or encoding.{' '}
+        <strong>Design principle</strong>: let Wasm do "one big continuous chunk of
+        heavy computation," rather than being called in a tight loop from JS. Too
+        fine-grained, and the boundary overhead eats up the performance gains.
+      </KeyTerm>
+
+      <Callout kind="tip" title="Don't want to set up scaffolding?">
+        For a quick taste, use a template: <code>npm create vite@latest</code> for the
+        frontend, then add a Rust crate generated with <code>wasm-pack new</code>; or
+        just look at the official <em>rustwasm</em> <code>create-wasm-app</code>{' '}
+        template. Vite supports importing <code>.wasm</code> out of the box.
+      </Callout>
+
+      <Quiz
+        question="Regarding Rust + WebAssembly, which statement is correct?"
+        options={[
+          { text: 'Wasm will replace JavaScript, and frontends will all be written in Rust from now on' },
+          { text: "Wasm is a good fit for compute-heavy core logic and complements JS; but moving large data across the boundary frequently has overhead, so keep call granularity in check", correct: true },
+          { text: 'Rust-compiled Wasm can manipulate the DOM directly, with no JS needed' },
+          { text: 'Wasm only runs in Node.js, not in the browser' },
+        ]}
+        explain={
+          <>
+            Wasm runs in the browser, but it can't touch the DOM directly (it goes
+            through JS), and it doesn't replace JS — the two collaborate. Its sweet
+            spot is "one big chunk of pure computation." Moving complex/large data
+            across the JS↔Wasm boundary has a copy cost, so make each call do more work
+            rather than calling frequently in tiny pieces.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key takeaways & what's next">
+        ① Wasm lets Rust run at near-native speed in the browser, complementing JS;
+        ② <code>wasm-bindgen</code> + <code>wasm-pack</code> auto-generate the glue;
+        ③ in React, call it like a normal function once <code>init()</code> resolves;
+        ④ mind the cost of data crossing the boundary. Next chapter we'll survey the
+        map of Rust's crate ecosystem, and then in the finale we'll weave everything
+        you've learned into a working little command-line tool!
       </Callout>
     </>
   )

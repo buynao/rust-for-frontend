@@ -1,5 +1,6 @@
 import { Callout, Figure, Pill } from '../../components/Ui'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 import './Showcase.css'
 
 interface Repo {
@@ -12,6 +13,7 @@ interface Repo {
 }
 
 function RepoGrid({ repos }: { repos: Repo[] }) {
+  const en = useLang() === 'en'
   return (
     <div className="repo-grid">
       {repos.map((r) => (
@@ -28,7 +30,9 @@ function RepoGrid({ repos }: { repos: Repo[] }) {
           </div>
           <div className="repo-path">{r.repo}</div>
           <div className="repo-what">{r.what}</div>
-          {r.like && <div className="repo-like">≈ 前端的 {r.like}</div>}
+          {r.like && (
+            <div className="repo-like">{en ? `≈ frontend's ${r.like}` : `≈ 前端的 ${r.like}`}</div>
+          )}
         </a>
       ))}
     </div>
@@ -36,6 +40,10 @@ function RepoGrid({ repos }: { repos: Repo[] }) {
 }
 
 export default function Showcase() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -178,6 +186,157 @@ export default function Showcase() {
         ② Rust 也有自己的前端框架(Leptos/Dioxus/Yew)和后端框架(axum/actix,基于 Tokio);
         ③ 大量 CLI 神器与基础设施明星(ripgrep、Meilisearch、Polars、Zed、Bevy…)都是 Rust。
         逛够了"别人的项目",<Pill>下一章</Pill>我们亲手写一个属于自己的 Rust 小工具收尾。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Frontend has its household names: React / Vue for frameworks, Next.js / Nest.js for full-stack,
+        webpack / Vite for tooling. So <strong>who's in Rust's "hall of fame"</strong>? This chapter takes you
+        on a tour of the star GitHub repos in the Rust orbit — many of which you're
+        <strong> already using every day without realizing they're written in Rust</strong>.
+      </p>
+
+      <Callout kind="rust" title="First, a quick &quot;who maps to who&quot; cheat sheet">
+        <ul style={{ margin: 0 }}>
+          <li>React / Vue (frontend frameworks) → <strong>Yew / Leptos / Dioxus</strong></li>
+          <li>Express / Nest.js (backend frameworks) → <strong>axum / actix-web / Rocket</strong> (built on <strong>Tokio</strong>)</li>
+          <li>Next.js (full-stack / SSR) → the full-stack modes of <strong>Leptos / Dioxus</strong></li>
+          <li>webpack / Babel / Rollup (build) → <strong>Rspack / SWC / Rolldown / Turbopack</strong></li>
+          <li>ESLint / Prettier (quality) → <strong>Biome / Oxc</strong></li>
+          <li>Electron (desktop) → <strong>Tauri</strong>; Node (runtime) → <strong>Deno</strong></li>
+        </ul>
+      </Callout>
+
+      <h2>① Your frontend toolchain is already running tons of Rust</h2>
+      <p>
+        Over the past few years, "rewrite the frontend tools in Rust" has become a trend — because it's tens of
+        times faster. The following are very likely already humming away in your
+        <code>node_modules</code> or your editor:
+      </p>
+      <RepoGrid
+        repos={[
+          { name: 'SWC', repo: 'swc-project/swc', what: "JS/TS compiler; Next.js's default compiler, also used by Deno", like: 'Babel' },
+          { name: 'Rspack', repo: 'web-infra-dev/rspack', what: 'From ByteDance: a high-speed bundler compatible with the webpack ecosystem', like: 'webpack' },
+          { name: 'Rolldown', repo: 'rolldown/rolldown', what: "The Vite team's Rust port of Rollup — Vite's next-generation foundation", like: 'Rollup' },
+          { name: 'Biome', repo: 'biomejs/biome', what: 'All-in-one lint + format (formerly Rome); one tool replaces ESLint+Prettier', like: 'ESLint + Prettier' },
+          { name: 'Oxc', repo: 'oxc-project/oxc', what: 'A blazing-fast JS toolchain suite (parse/lint/transform/minify)', like: 'ESLint/Babel combined' },
+          { name: 'Lightning CSS', repo: 'parcel-bundler/lightningcss', what: "Parcel's CSS parser/transformer/minifier", like: 'PostCSS + cssnano' },
+        ]}
+      />
+      <Callout kind="info" title="And there's more">
+        <strong>Turbopack</strong> (shipped with <a href="https://github.com/vercel/next.js" target="_blank" rel="noreferrer">vercel/next.js</a>, Vercel's next-gen bundler) and
+        <strong> Turborepo</strong> (<a href="https://github.com/vercel/turborepo" target="_blank" rel="noreferrer">vercel/turborepo</a>, a monorepo build system) are Rust too.
+        Note: <strong>esbuild is the exception — it's written in Go</strong>, not Rust.
+      </Callout>
+
+      <Figure title="One frontend workflow, Rust everywhere" caption="From writing code to shipping, the key stages of the mainstream toolchain are being taken over by Rust one by one — this is the most concrete answer to &quot;why frontend devs should know Rust.&quot;">
+        <Flow
+          width={720}
+          height={140}
+          nodes={[
+            { id: 'edit', x: 10, y: 50, w: 120, label: 'Write code', sub: 'Zed editor', tone: 'info' },
+            { id: 'build', x: 165, y: 50, w: 130, label: 'Compile/bundle', sub: 'SWC·Rspack·Rolldown', tone: 'rust' },
+            { id: 'lint', x: 330, y: 50, w: 120, label: 'Lint/format', sub: 'Biome·Oxc', tone: 'rust' },
+            { id: 'run', x: 485, y: 50, w: 110, label: 'Run', sub: 'Deno', tone: 'ok' },
+            { id: 'ship', x: 625, y: 50, w: 90, label: 'Ship', sub: 'Tauri', tone: 'warn' },
+          ]}
+          edges={[
+            { from: 'edit', to: 'build' },
+            { from: 'build', to: 'lint' },
+            { from: 'lint', to: 'run' },
+            { from: 'run', to: 'ship' },
+          ]}
+        />
+      </Figure>
+
+      <h2>② Frontend frameworks written in Rust (the React / Vue equivalents)</h2>
+      <p>
+        Yes, you can <strong>write frontend in Rust</strong>: these frameworks compile components to WebAssembly
+        and run them in the browser. Their production market share is still nowhere near React's, but they're a
+        very intuitive way to understand "Rust + frontend."
+      </p>
+      <RepoGrid
+        repos={[
+          { name: 'Leptos', repo: 'leptos-rs/leptos', what: 'Fine-grained reactivity + full-stack SSR; the hottest player in Rust frontend right now', like: 'SolidJS + Next.js' },
+          { name: 'Dioxus', repo: 'DioxusLabs/dioxus', what: 'One codebase across web / desktop / mobile, with a React-like component style', like: 'React + React Native' },
+          { name: 'Yew', repo: 'yewstack/yew', what: 'The first Rust frontend framework to make a name; components + virtual DOM', like: 'React' },
+        ]}
+      />
+
+      <h2>③ Web backends & async foundations (the Express / Nest equivalents)</h2>
+      <RepoGrid
+        repos={[
+          { name: 'Tokio', repo: 'tokio-rs/tokio', what: 'The async runtime; the bedrock of nearly the entire Rust server-side ecosystem', like: "Node's event loop" },
+          { name: 'axum', repo: 'tokio-rs/axum', what: "The Tokio team's modern web framework, with type-safe extractors", like: 'Express / Fastify' },
+          { name: 'actix-web', repo: 'actix/actix-web', what: 'A web framework perennially in the top tier of performance benchmarks', like: 'Fastify' },
+          { name: 'Rocket', repo: 'rwf2/Rocket', what: 'A framework that prioritizes developer experience and convention over configuration', like: 'Nest.js' },
+        ]}
+      />
+
+      <h2>④ Command-line gems (you may use them daily without knowing they're Rust)</h2>
+      <p>This category went the most mainstream: a wave of Rust CLI tools became developers' new defaults because they're <strong>both fast and pleasant to use</strong>.</p>
+      <RepoGrid
+        repos={[
+          { name: 'ripgrep (rg)', repo: 'BurntSushi/ripgrep', what: "Ultra-fast code search; it's literally what powers VS Code's global search", like: 'grep' },
+          { name: 'fd', repo: 'sharkdp/fd', what: 'A friendlier, faster file finder', like: 'find' },
+          { name: 'bat', repo: 'sharkdp/bat', what: 'cat with syntax highlighting and paging', like: 'cat' },
+          { name: 'eza', repo: 'eza-community/eza', what: 'A modern ls with colors and icons', like: 'ls' },
+          { name: 'starship', repo: 'starship/starship', what: 'A good-looking, cross-shell command prompt', like: 'oh-my-zsh themes' },
+          { name: 'zoxide', repo: 'ajeetdsouza/zoxide', what: 'A smart cd with memory that jumps between directories instantly', like: 'cd + z' },
+          { name: 'delta', repo: 'dandavison/delta', what: 'Beautiful git diff / blame highlighting', like: 'git diff' },
+          { name: 'Nushell', repo: 'nushell/nushell', what: 'A new kind of shell that treats data as structured tables', like: 'bash / zsh' },
+        ]}
+      />
+
+      <h2>⑤ Databases · search · data (infrastructure stars)</h2>
+      <RepoGrid
+        repos={[
+          { name: 'Meilisearch', repo: 'meilisearch/meilisearch', what: 'A ready-to-go instant search engine you can self-host', like: 'Algolia' },
+          { name: 'Qdrant', repo: 'qdrant/qdrant', what: 'A vector database, a popular pick for AI / RAG / semantic search', like: 'Pinecone' },
+          { name: 'SurrealDB', repo: 'surrealdb/surrealdb', what: 'A multi-model database (document/graph/relational) with built-in realtime and permissions', like: 'Supabase/Firebase' },
+          { name: 'Polars', repo: 'pola-rs/polars', what: 'A blazing-fast DataFrame with Python bindings, common for data processing', like: 'pandas' },
+          { name: 'TiKV', repo: 'tikv/tikv', what: 'A distributed transactional key-value store; a graduated CNCF project', like: 'distributed Redis/etcd' },
+          { name: 'Pingora', repo: 'cloudflare/pingora', what: "Cloudflare's open-source network proxy framework, built to handle global-scale traffic", like: 'nginx' },
+        ]}
+      />
+
+      <h2>⑥ Jaw-dropping large applications (Rust's ceiling)</h2>
+      <RepoGrid
+        repos={[
+          { name: 'Zed', repo: 'zed-industries/zed', what: 'A high-performance collaborative code editor, from the original Atom / Tree-sitter team', like: 'VS Code' },
+          { name: 'Ruff + uv', repo: 'astral-sh/ruff', what: "Python's linter and package manager — so fast they shook up the Python world", like: 'ESLint / npm (for Python)' },
+          { name: 'Bevy', repo: 'bevyengine/bevy', what: 'A data-driven (ECS) open-source game engine with an extremely active community', like: 'Unity (open-source flavor)' },
+          { name: 'RustDesk', repo: 'rustdesk/rustdesk', what: 'Open-source, self-hostable remote desktop', like: 'TeamViewer' },
+          { name: 'Alacritty', repo: 'alacritty/alacritty', what: 'A GPU-accelerated, high-performance terminal', like: 'iTerm2' },
+          { name: 'Servo', repo: 'servo/servo', what: 'An experimental browser engine — the very project the Rust language was born from', like: 'a browser engine' },
+        ]}
+      />
+      <Callout kind="tip" title="The big players are betting on it too">
+        AWS's <a href="https://github.com/firecracker-microvm/firecracker" target="_blank" rel="noreferrer">Firecracker</a>
+        (the microVM behind Lambda), Cloudflare (Pingora / Workers), Discord (its messaging service), Dropbox, 1Password,
+        Microsoft and Google's systems layers, and even the <strong>Linux kernel</strong> have all adopted Rust. It stopped being a "niche toy" long ago.
+      </Callout>
+
+      <h2>⑦ Learning and the language itself</h2>
+      <RepoGrid
+        repos={[
+          { name: 'rust-lang/rust', repo: 'rust-lang/rust', what: 'The language, compiler, and standard library themselves; start here to read the source or file an issue' },
+          { name: 'The Rust Book', repo: 'rust-lang/book', what: 'The official, authoritative tutorial "The Book" (Chinese translation available)' },
+          { name: 'Rustlings', repo: 'rust-lang/rustlings', what: 'Hundreds of compiler-driven mini-exercises; fix them until they compile and you\'ve learned it' },
+          { name: 'awesome-rust', repo: 'rust-unofficial/awesome-rust', what: 'A grand catalog of Rust resources; come here first to find a library in any domain' },
+        ]}
+      />
+
+      <Callout kind="info" title="Key takeaways & next step">
+        ① The build/lint/run stages of your frontend workflow are being taken over by Rust tools (SWC/Rspack/Rolldown/Biome/Oxc/Deno/Tauri);
+        ② Rust also has its own frontend frameworks (Leptos/Dioxus/Yew) and backend frameworks (axum/actix, built on Tokio);
+        ③ Tons of CLI gems and infrastructure stars (ripgrep, Meilisearch, Polars, Zed, Bevy…) are all Rust.
+        Now that you've toured "other people's projects," in the <Pill>next chapter</Pill> we'll wrap up by building a little Rust tool of our own.
       </Callout>
     </>
   )

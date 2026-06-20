@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure, Pill } from '../../components/Ui'
 import RcViz from '../../components/viz/RcViz'
+import { useLang } from '../../i18n/lang'
 
 export default function SmartPointers() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -169,6 +174,190 @@ fn main() {
         ① <code>Box</code> 上堆 / 递归;② <code>Rc</code>/<code>Arc</code> 共享所有权(引用计数);
         ③ <code>RefCell</code>/<code>Mutex</code> 提供内部可变性(检查推迟到运行期);④ 叠加使用覆盖复杂结构。
         下一章我们把「引用能活多久」这件事讲透——生命周期。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        "Single ownership" is wonderfully safe, but sometimes too rigid: what if a value needs to be
+        <strong> shared in several places</strong>? What if you want a <strong>recursive</strong> data structure
+        (linked list, tree)? What if you need to <strong>mutate something from the inside</strong> while the borrow
+        rules are watching? The answer is <strong>smart pointers</strong> — pointers wrapped with an "extra ability",
+        which you reach for as needed.
+      </p>
+
+      <Callout kind="js" title="You've actually seen something like this on the frontend">
+        JS's <code>WeakRef</code>, React's <code>useRef</code>, the "shared structure" in immutable libraries… all of these
+        are about "attaching rules/abilities to a reference". Rust just makes that idea explicit and typed. The three below
+        are the ones you'll reach for 90% of the time.
+      </Callout>
+
+      <h2>Box&lt;T&gt;: put data on the heap</h2>
+      <p>
+        <code>Box</code> is the simplest smart pointer: it's just "an owning pointer to some value on the heap".
+        Two main uses: ① explicitly place big data on the heap; ② let a <strong>recursive type</strong> have a known size.
+      </p>
+      <Compare
+        jsTitle="JS: objects live on the heap by default (the engine handles it)"
+        rustTitle="Rust: use Box to put it on the heap explicitly"
+        js={`// Linked-list node — JS just references it directly
+const node = {
+  value: 1,
+  next: { value: 2, next: null }
+};`}
+        rust={`// Recursive enum: without Box the compiler can't compute its size (infinite)
+enum List {
+    Cons(i32, Box<List>),  // Box makes it "pointer-sized"
+    Nil,
+}
+use List::*;
+let list = Cons(1, Box::new(Cons(2, Box::new(Nil))));`}
+        note="Why Box? If List directly contained a List, its size would recurse forever. Box turns 'the next node' into a fixed-size pointer, so the size becomes known."
+      />
+      <Callout kind="rust" title="When should you use Box?">
+        ① recursive types (trees, linked lists, ASTs); ② when you want to move a big chunk of data by moving only a pointer,
+        not the data; ③ trait objects <code>Box&lt;dyn Trait&gt;</code> (recall "dynamic dispatch"). Day to day it's the
+        plainest, zero-overhead smart pointer.
+      </Callout>
+
+      <h2>Rc&lt;T&gt;: multiple owners share (reference counting)</h2>
+      <p>
+        When one piece of data needs to be <strong>owned by several variables at once</strong> (e.g. a graph node pointed to
+        by multiple edges), single ownership isn't enough. <code>Rc</code> (Reference Counted) maintains a
+        <strong> reference count</strong>: each <code>clone</code> adds 1, each drop subtracts 1, and the data is freed only
+        when it hits 0. Let's watch the process in the animation:
+      </p>
+
+      <Figure
+        title="Animation: the reference-count lifecycle of Rc"
+        caption="Step through it: Rc::clone doesn't copy the data, it just bumps the count; each holder leaving scope decrements the count by one; only when the count reaches zero is the data freed."
+      >
+        <RcViz />
+      </Figure>
+
+      <CodeBlock
+        runnable
+        title="Rc sharing read-only data"
+        code={`use std::rc::Rc;
+
+fn main() {
+    let shared = Rc::new(vec![1, 2, 3]);
+    let a = Rc::clone(&shared);      // count → 2
+    let b = Rc::clone(&shared);      // count → 3
+
+    println!("data = {:?}", a);
+    println!("there are {} holders right now", Rc::strong_count(&shared));
+    // a, b and shared share the same Vec — any of them can read
+    println!("b can read it too: {:?}", b);
+}`}
+        output={`data = [1, 2, 3]
+there are 3 holders right now
+b can read it too: [1, 2, 3]`}
+      />
+      <Callout kind="warn" title="Rc is single-threaded">
+        <code>Rc</code>'s counter isn't locked, so it only works on a single thread. To share <strong>across threads</strong>,
+        switch to <code>Arc</code> (Atomically Reference Counted) — the API is identical, it just uses atomic operations for
+        the count, which is slightly slower but thread-safe. (Recall <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> from the
+        "async &amp; concurrency" chapter.)
+      </Callout>
+
+      <h2>RefCell&lt;T&gt;: interior mutability</h2>
+      <p>
+        <code>Rc</code> can only share <strong>read-only</strong> data. But what if multiple holders also want to
+        <strong> mutate</strong> it? That's where <code>RefCell</code> comes in: it moves the "borrow check" from
+        <strong> compile time</strong> to <strong>run time</strong> — letting you hand out a mutable reference even while
+        holding an immutable one.
+      </p>
+      <KeyTerm term="interior mutability" en="interior mutability" analogy="A bit like a readonly object in TS that secretly hides a mutable field — immutable on the outside, changeable on the inside.">
+        Normal borrow rules are checked at compile time. <code>RefCell</code> instead does the bookkeeping at
+        <strong> run time</strong>: <code>.borrow()</code> takes a read-only ref, <code>.borrow_mut()</code> takes a mutable one.
+        The rules don't change (many readers OK, mutation must be exclusive), but <strong>a violation panics rather than failing
+        to compile</strong>.
+      </KeyTerm>
+      <CodeBlock
+        runnable
+        title="Rc<RefCell<T>>: shared and mutable"
+        code={`use std::rc::Rc;
+use std::cell::RefCell;
+
+fn main() {
+    // The classic combo: Rc handles "multiple owners", RefCell handles "mutability"
+    let shared = Rc::new(RefCell::new(vec![1, 2, 3]));
+
+    let clone1 = Rc::clone(&shared);
+    clone1.borrow_mut().push(4);     // mutate through one handle
+
+    let clone2 = Rc::clone(&shared);
+    clone2.borrow_mut().push(5);     // mutate through another handle
+
+    // Every handle sees the same, already-modified data
+    println!("{:?}", shared.borrow());
+}`}
+        output={`[1, 2, 3, 4, 5]`}
+      />
+      <Callout kind="danger" title="RefCell defers the check to run time">
+        If you <code>borrow_mut()</code> again while one <code>borrow_mut()</code> is still live, the program
+        <strong> panics</strong> at run time (<code>already borrowed</code>) instead of failing to compile. So
+        <code> RefCell</code> "trades a bit of runtime risk for flexibility" — don't overuse it; if a plain borrow works,
+        skip <code>RefCell</code>.
+      </Callout>
+
+      <h2>How do you choose? A decision table</h2>
+      <div className="prose">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', color: 'var(--rust)' }}>
+              <th style={c}>Need</th><th style={c}>Use</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Just want to put a value on the heap / recursive type', 'Box<T>'],
+              ['One piece of data, multiple owners (single-threaded, read-only)', 'Rc<T>'],
+              ['Multiple owners + need to mutate (single-threaded)', 'Rc<RefCell<T>>'],
+              ['Share across threads (read-only)', 'Arc<T>'],
+              ['Share across threads + mutate', 'Arc<Mutex<T>> or Arc<RwLock<T>>'],
+            ].map((r) => (
+              <tr key={r[1]} style={{ borderTop: '1px solid var(--line)' }}>
+                <td style={{ ...c, color: 'var(--fg-2)' }}>{r[0]}</td>
+                <td style={c}><code style={{ color: 'var(--rust)' }}>{r[1]}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <Pill>Memory aid</Pill> <strong>Rc/Arc solve "who owns it" (sharing); RefCell/Mutex solve "who can change it"
+        (mutability).</strong> Stack them together and you cover the vast majority of complex data structures.
+      </p>
+
+      <Quiz
+        question="You're building a tree on a single thread. A parent node needs to be referenced by multiple children, and the node's contents will be mutated later. Which type combination fits best?"
+        options={[
+          { text: 'Box<Node>' },
+          { text: 'Rc<RefCell<Node>>', correct: true },
+          { text: 'Arc<Mutex<Node>>' },
+          { text: 'A plain &mut Node' },
+        ]}
+        explain={
+          <>
+            "Referenced in multiple places" → you need <code>Rc</code> (multiple owners); "will be mutated later" → you need
+            <code> RefCell</code> (interior mutability). Combine them into <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code>.
+            <code> Arc&lt;Mutex&gt;</code> is its cross-thread version — unnecessary and slower on a single thread. A plain
+            <code> &mut</code> can't give you "multiple owners".
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key takeaways & next step">
+        ① <code>Box</code> for the heap / recursion; ② <code>Rc</code>/<code>Arc</code> for shared ownership (reference
+        counting); ③ <code>RefCell</code>/<code>Mutex</code> for interior mutability (the check is deferred to run time);
+        ④ stack them to cover complex structures. Next chapter we'll fully unpack "how long a reference is allowed to live" —
+        lifetimes.
       </Callout>
     </>
   )

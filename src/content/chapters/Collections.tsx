@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz } from '../../components/Ui'
 import { MicroLab } from '../../components/Lab'
+import { useLang } from '../../i18n/lang'
 
 export default function Collections() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -204,6 +209,219 @@ fn main() {
         ① <code>HashMap</code>/<code>HashSet</code> ≈ Map/Set,但 <code>get</code> 返回 <code>Option</code>;
         ② <code>entry</code> API 优雅处理「有则更新无则插入」;③ 需要有序遍历用 <code>BTreeMap</code>。
         到此「语言核心」就全了。接下来进入<strong>进阶</strong>:当单一所有权不够用时,智能指针登场。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        The previous group of chapters covered <code>Vec</code> (≈ Array). But frontend work also leans heavily on
+        <code>Object</code> / <code>Map</code> / <code>Set</code>. This chapter sorts out their Rust counterparts in one
+        go: <strong>HashMap</strong>, <strong>HashSet</strong>, plus the ordered variant <strong>BTreeMap</strong>.
+      </p>
+
+      <h2>HashMap: your Map / Object</h2>
+      <Compare
+        js={`const scores = new Map();
+scores.set("Alice", 95);
+scores.set("Bob", 80);
+
+scores.get("Alice");      // 95
+scores.has("Bob");        // true
+scores.delete("Bob");
+scores.size;              // 1`}
+        rust={`use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+scores.insert("Alice", 95);
+scores.insert("Bob", 80);
+
+scores.get("Alice");      // Some(&95) — note: it's an Option!
+scores.contains_key("Bob"); // true
+scores.remove("Bob");
+scores.len();             // 1`}
+        note="The biggest difference: get returns an Option<&V> (the key might not exist), forcing you to handle the 'not found' case — one more goodbye to undefined."
+      />
+
+      <Callout kind="rust" title="get returns an Option, not a value">
+        In JS, <code>map.get(missing)</code> hands you <code>undefined</code>, and one careless <code>undefined.foo</code>
+        blows up. Rust hands you <code>Option&lt;&V&gt;</code>, which you have to unwrap first. It pairs nicely with a
+        default value:
+        <CodeBlock code={`let alice = scores.get("Alice").copied().unwrap_or(0);
+// or grab a mutable reference and insert a default in one shot:
+*scores.entry("Carol").or_insert(0) += 1;`} />
+      </Callout>
+
+      <h2>The entry API: one of Rust's nicest designs</h2>
+      <p>
+        "Update the value if the key exists, otherwise insert a default" — in JS that's a chunk of
+        <code>if (map.has(k))</code> logic, but Rust does it in one line with <code>entry</code>. Here's the classic
+        word-frequency example:
+      </p>
+      <CodeBlock
+        runnable
+        title="Counting words with entry"
+        code={`use std::collections::HashMap;
+
+fn main() {
+    let text = "the cat the dog the bird";
+    let mut counts: HashMap<&str, i32> = HashMap::new();
+
+    for word in text.split_whitespace() {
+        // insert 0 if the key is missing, then +1 either way
+        *counts.entry(word).or_insert(0) += 1;
+    }
+
+    // note: HashMap iteration order is random
+    let the = counts.get("the").unwrap();
+    println!("\\"the\\" appeared {the} times");
+}`}
+        output={`"the" appeared 3 times`}
+      />
+      <Compare
+        jsTitle="JS checks by hand"
+        rustTitle="Rust: one entry line"
+        js={`for (const w of words) {
+  if (counts.has(w)) {
+    counts.set(w, counts.get(w) + 1);
+  } else {
+    counts.set(w, 1);
+  }
+}`}
+        rust={`for w in words {
+    *counts.entry(w).or_insert(0) += 1;
+}`}
+        note="entry(k).or_insert(default) returns a mutable reference to that slot's value: if it exists you get the current value, otherwise it inserts the default first and then hands it to you."
+      />
+
+      <h2>HashSet: your Set</h2>
+      <Compare
+        js={`const seen = new Set();
+seen.add(1);
+seen.add(1);          // duplicate is a no-op
+seen.has(1);          // true
+seen.size;            // 1`}
+        rust={`use std::collections::HashSet;
+
+let mut seen = HashSet::new();
+seen.insert(1);
+seen.insert(1);       // returns false (already present)
+seen.contains(&1);    // true
+seen.len();           // 1`}
+        note="The API maps over almost one-to-one. insert also returns a bool telling you whether it was a new element, so you can skip the contains-then-insert dance."
+      />
+      <Callout kind="tip" title="Set operations out of the box">
+        <code>HashSet</code> comes with intersection / union / difference built in — handier than hand-rolling them in JS:
+        <CodeBlock code={`let a: HashSet<i32> = [1, 2, 3].into_iter().collect();
+let b: HashSet<i32> = [2, 3, 4].into_iter().collect();
+let common: Vec<_> = a.intersection(&b).collect(); // [2, 3]
+let all: Vec<_> = a.union(&b).collect();           // [1,2,3,4]`} />
+      </Callout>
+
+      <KeyTerm term="BTreeMap / BTreeSet" en="ordered versions" analogy="Like the sorted iteration you only get in JS by manually doing [...map].sort() — except this is 'sorted by nature' and lookups stay fast.">
+        <code>HashMap</code> iterates in <strong>no particular order</strong> (for speed). When you need to iterate
+        <strong>sorted by key</strong>, switch to <code>BTreeMap</code> — the API is nearly identical, at the cost of
+        slightly slower single operations (O(log n) vs O(1)), but iteration is automatically ordered.
+        <CodeBlock code={`use std::collections::BTreeMap;
+let mut m = BTreeMap::new();
+m.insert(3, "c"); m.insert(1, "a"); m.insert(2, "b");
+for (k, v) in &m { print!("{k}:{v} "); } // 1:a 2:b 3:c (sorted!)`} />
+      </KeyTerm>
+
+      <h2>A cheat sheet to wrap up</h2>
+      <div className="prose">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', color: 'var(--rust)' }}>
+              <th style={c}>Frontend</th><th style={c}>Rust</th><th style={c}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Array', 'Vec<T>', 'Growable array, supports push'],
+              ['Map / Object', 'HashMap<K, V>', 'Key-value pairs, unordered, O(1) lookup'],
+              ['Set', 'HashSet<T>', 'Deduplicated collection'],
+              ['Map with ordered iteration', 'BTreeMap<K, V>', 'Automatically sorted by key'],
+              ['map.get(k)', 'map.get(&k) → Option', 'Returns None if not found, not undefined'],
+              ['map.has(k)', 'map.contains_key(&k)', 'Whether the key exists'],
+              ['Fiddly "update or insert"', 'map.entry(k).or_insert(d)', 'Atomic, one line'],
+            ].map((r) => (
+              <tr key={r[1]} style={{ borderTop: '1px solid var(--line)' }}>
+                <td style={c}><code>{r[0]}</code></td>
+                <td style={c}><code style={{ color: 'var(--rust)' }}>{r[1]}</code></td>
+                <td style={{ ...c, color: 'var(--fg-2)' }}>{r[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Quiz
+        question="You want to '+1 the count for a key, starting from 0 if the key doesn't exist'. What's the most idiomatic Rust way?"
+        options={[
+          { text: 'if map.contains_key(k) { ... } else { ... } — check by hand' },
+          { text: '*map.entry(k).or_insert(0) += 1;', correct: true },
+          { text: 'map.set(k, map.get(k) + 1)' },
+          { text: 'map[k] += 1; — increment via indexing directly' },
+        ]}
+        explain={
+          <>
+            <code>entry(k).or_insert(0)</code> returns a <strong>mutable reference</strong> to that slot: if the key is
+            missing it inserts 0 first, then <code>*... += 1</code> increments it. One step, no race, no duplicate
+            lookup. Indexing with <code>map[k]</code> to read an existing key is fine, but indexing a missing key panics,
+            so it can't be used to "auto-initialize".
+          </>
+        }
+      />
+
+      <h2>Hands-on practice</h2>
+      <MicroLab
+        title="Count words with entry"
+        minutes={6}
+        goal={
+          <>
+            Fill in the <code>TODO</code> line, using <code>HashMap</code>'s <code>entry</code> API to count how many
+            times each word appears, so it correctly prints <code>a appeared 3 times</code>.
+          </>
+        }
+        starter={`use std::collections::HashMap;
+
+fn main() {
+    let text = "a b a c a b";
+    let mut counts: HashMap<&str, i32> = HashMap::new();
+    for w in text.split_whitespace() {
+        // TODO: +1 the count for w (start from 0 if it doesn't exist)
+    }
+    println!("a appeared {} times", counts.get("a").unwrap());
+}`}
+        hint={
+          <>
+            One line does it: <code>{'*counts.entry(w).or_insert(0) += 1;'}</code>.
+            <code>entry(w).or_insert(0)</code> returns a mutable reference to that slot — if it's missing it puts 0 in
+            first, then dereferences and increments.
+          </>
+        }
+        solution={`use std::collections::HashMap;
+
+fn main() {
+    let text = "a b a c a b";
+    let mut counts: HashMap<&str, i32> = HashMap::new();
+    for w in text.split_whitespace() {
+        *counts.entry(w).or_insert(0) += 1;
+    }
+    println!("a appeared {} times", counts.get("a").unwrap());
+}`}
+        expectedOutput={`a appeared 3 times`}
+      />
+
+      <Callout kind="info" title="Key takeaways & next step">
+        ① <code>HashMap</code>/<code>HashSet</code> ≈ Map/Set, but <code>get</code> returns an <code>Option</code>;
+        ② the <code>entry</code> API elegantly handles "update or insert"; ③ use <code>BTreeMap</code> when you need
+        ordered iteration. That wraps up the "language core". Next we move into <strong>advanced</strong> territory:
+        when single ownership isn't enough, smart pointers enter the picture.
       </Callout>
     </>
   )

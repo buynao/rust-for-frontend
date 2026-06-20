@@ -10,6 +10,7 @@ import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typesc
 import jsx from 'react-syntax-highlighter/dist/esm/languages/prism/jsx'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import RustRunner from './RustRunner'
+import { useUI } from '../i18n/strings'
 import './CodeBlock.css'
 
 SyntaxHighlighter.registerLanguage('rust', rust)
@@ -55,6 +56,7 @@ export default function CodeBlock({
   highlight = [],
   output,
 }: Props) {
+  const t = useUI()
   const [copied, setCopied] = useState(false)
   const trimmed = code.replace(/^\n+|\n+$/g, '')
 
@@ -83,7 +85,7 @@ export default function CodeBlock({
         <span className="codeblock-lang">{lang}</span>
         <div className="codeblock-actions">
           <button className="cb-btn" onClick={copy}>
-            {copied ? '✓ 已复制' : '复制'}
+            {copied ? t.copied : t.copy}
           </button>
         </div>
       </div>
@@ -109,7 +111,7 @@ export default function CodeBlock({
       </SyntaxHighlighter>
       {output !== undefined && (
         <div className="codeblock-output">
-          <span className="codeblock-output-tag">输出</span>
+          <span className="codeblock-output-tag">{t.outputTag}</span>
           <pre>{output}</pre>
         </div>
       )}

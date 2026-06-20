@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 export default function Macros() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -143,6 +148,161 @@ fn main() {
         ① 带 <code>!</code> 的是宏,编译期展开成代码;② <code>println!</code>/<code>vec!</code>/<code>dbg!</code>/<code>assert_eq!</code> 是日常主力;
         ③ <code>#[derive]</code> 和 <code>#[tokio::main]</code> 也是宏;④ 重在会用,自己写宏要谨慎。
         进阶部分到此结束!接下来回到前端主场,先纵览 Rust 的 crate 生态地图。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Since chapter one, that <code>!</code> after <code>println!</code> has been hanging around. Time to reveal what
+        it means: it marks a <strong>macro</strong>. A macro is "code that writes code" — it expands into ordinary Rust
+        at <strong>compile time</strong>. As a frontend dev, you'll almost certainly <strong>use</strong> macros far more
+        than you <strong>write</strong> them, so this chapter is all about reading and using them confidently.
+      </p>
+
+      <h2>A macro is not a function</h2>
+      <p>
+        The ones with <code>!</code> are macros; the ones without are functions. The difference: a function is called at
+        runtime; a macro is <strong>expanded</strong> into code at compile time. That lets it do things a function
+        can't — take <strong>any number</strong> of arguments, <strong>check</strong> a format string at compile time,
+        even <strong>generate</strong> an entire trait implementation.
+      </p>
+      <Figure title="When macros run: expansion at compile time" caption="Before your source is actually compiled, a macro is first 'expanded' into the equivalent plain Rust code, which then goes through the normal compilation pipeline.">
+        <Flow
+          width={700}
+          height={150}
+          nodes={[
+            { id: 'src', x: 10, y: 50, w: 130, label: 'Source with macro', sub: 'vec![1,2,3]', tone: 'rust' },
+            { id: 'expand', x: 180, y: 50, w: 140, label: 'Expansion', sub: 'macro expansion', tone: 'warn' },
+            { id: 'plain', x: 360, y: 50, w: 160, label: 'Plain Rust code', sub: 'a Vec::new()+push', tone: 'info' },
+            { id: 'compile', x: 560, y: 50, w: 120, label: 'Normal compile', tone: 'ok' },
+          ]}
+          edges={[
+            { from: 'src', to: 'expand' },
+            { from: 'expand', to: 'plain' },
+            { from: 'plain', to: 'compile' },
+          ]}
+        />
+      </Figure>
+
+      <Compare
+        jsTitle="JS: no real macros"
+        rustTitle="Rust: macros generate code at compile time"
+        js={`// The closest JS has is template strings / tagged templates
+const v = [1, 2, 3];
+console.log(\`The value is \${v}\`);
+
+// To actually "generate code" you need a build plugin / codegen script`}
+        rust={`let v = vec![1, 2, 3];        // vec! macro
+println!("The value is {:?}", v);  // println! macro
+
+// Macros are a built-in language feature: expanded at compile time, type-safe`}
+        note="JS template strings and tagged templates have a faint whiff of macros, but Rust macros are true syntax-level metaprogramming, and type-checked all the way through."
+      />
+
+      <h2>Macros you use every day</h2>
+      <CodeBlock
+        title="Common declarative macros"
+        code={`println!("{}", x);       // print + newline
+print!("no newline");    // print without a newline
+eprintln!("to stderr");  // error output
+format!("{}-{}", a, b);  // build a String (no printing)
+vec![1, 2, 3];           // construct a Vec
+vec![0; 5];              // [0, 0, 0, 0, 0]
+assert_eq!(a, b);        // assert equality (used in tests)
+panic!("something blew up"); // crash on purpose
+todo!();                 // placeholder: not implemented yet (panics)
+dbg!(x);                 // debug: prints "file:line + expression + value" and returns the value`}
+      />
+      <Callout kind="tip" title="dbg! is a debugging superpower">
+        Frontend devs love a quick <code>console.log</code>. Rust's <code>dbg!</code> goes further: it prints the
+        <strong>file, line number, the source text of the expression, and its value</strong>, and it also
+        <strong>returns</strong> the value — so you can drop it right into an expression:
+        <CodeBlock code={`let n = dbg!(2 + 3) * 10;   // prints [src/main.rs:5] 2 + 3 = 5, then n = 50`} />
+      </Callout>
+
+      <KeyTerm term="Why println! has to be a macro" en="compile-time format checking" analogy="Like TS template literal types validating a string at compile time — but println! goes even further: if the argument count/types don't line up, compilation just fails.">
+        <code>println!("{} {}", a)</code> is a <strong>compile error</strong>: the placeholders want two arguments and
+        you only gave one. A regular function can't do that check (it only learns its arguments at runtime), but a macro
+        can analyze the format string at compile time. That's exactly why these formatting facilities are designed as
+        macros.
+      </KeyTerm>
+
+      <h2>Derive macros: #[derive] is a macro too</h2>
+      <p>
+        Remember <code>#[derive(Debug, Clone)]</code> from the "Traits & Generics" chapter? It's a kind of
+        <strong>derive macro</strong> that <strong>auto-generates</strong> a whole trait implementation at compile time.
+        You write one line and the macro expands it into dozens:
+      </p>
+      <CodeBlock
+        code={`#[derive(Debug, Clone, PartialEq)]
+struct Point { x: i32, y: i32 }
+// At compile time the macro generated three impl blocks: Debug, Clone, PartialEq
+// Otherwise you'd be hand-writing dozens of lines of boilerplate`}
+      />
+      <Callout kind="rust" title="Three kinds of macro (just so you know)">
+        ① <b>Declarative macros</b> <code>macro_rules!</code> (e.g. <code>vec!</code>) — generate code by pattern
+        matching; ② <b>Derive macros</b> <code>#[derive(...)]</code> — auto-implement traits for a type;
+        ③ <b>Attribute / function-like procedural macros</b> (e.g. <code>#[tokio::main]</code>,
+        <code>#[wasm_bindgen]</code>) — the most powerful, able to rewrite code arbitrarily. Day to day, you're mostly a
+        <strong>consumer</strong> of these macros.
+      </Callout>
+
+      <h2>A peek at writing a simple macro</h2>
+      <p>You don't need to master this — just get a feel for what <code>macro_rules!</code> looks like. At heart it's "input pattern → output code" matching:</p>
+      <CodeBlock
+        runnable
+        title="Define your own max! macro"
+        code={`// Define a macro that finds the max of any number of values
+macro_rules! my_max {
+    ($x:expr) => { $x };                       // just one → itself
+    ($x:expr, $($rest:expr),+) => {            // one + several more
+        {
+            let rest_max = my_max!($($rest),+); // recursive expansion
+            if $x > rest_max { $x } else { rest_max }
+        }
+    };
+}
+
+fn main() {
+    println!("{}", my_max!(3));            // 3
+    println!("{}", my_max!(3, 7, 2, 9, 1)); // 9
+}`}
+        output={`3
+9`}
+      />
+      <Callout kind="warn" title="Don't rush to write your own macros">
+        Macros are powerful but hard to debug and easy to misread. The community consensus is: <strong>if a function or
+        generic can solve it, don't reach for a macro</strong>. As a frontend dev, 99% of the time you're
+        <strong>calling</strong> existing macros (from the standard library and various crates), not inventing new ones.
+        Being able to read them is enough.
+      </Callout>
+
+      <Quiz
+        question="Why is println! designed as a macro instead of a regular function?"
+        options={[
+          { text: 'Because macros run faster' },
+          { text: 'Because a macro can analyze the format string at compile time, check that placeholders and arguments match in count/type, and accept a variable number of arguments', correct: true },
+          { text: 'Because functions can’t print to the console' },
+          { text: 'Because macros don’t need to be imported' },
+        ]}
+        explain={
+          <>
+            A regular function has a fixed number and type of parameters, and they're evaluated at runtime. But
+            <code>println!</code> needs to accept <strong>any number</strong> of arguments and validate the format
+            string <code>"{} {}"</code> against the actual arguments at <strong>compile time</strong>. Only a macro can
+            do this — a mismatch fails compilation outright, rather than blowing up at runtime.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key takeaways & next step">
+        ① The <code>!</code> marks a macro, expanded into code at compile time; ② <code>println!</code>/<code>vec!</code>/<code>dbg!</code>/<code>assert_eq!</code> are your daily workhorses;
+        ③ <code>#[derive]</code> and <code>#[tokio::main]</code> are macros too; ④ focus on using them, and be cautious about writing your own.
+        That wraps up the advanced section! Next we head back to familiar frontend turf and survey the map of Rust's crate ecosystem.
       </Callout>
     </>
   )

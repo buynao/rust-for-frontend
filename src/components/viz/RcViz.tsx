@@ -1,16 +1,17 @@
 import { motion } from 'framer-motion'
 import { useSteps, StepperControls } from './Stepper'
+import { useLang } from '../../i18n/lang'
 import './viz.css'
 
 interface Frame {
   code: string
-  owners: string[]   // 当前持有 Rc 句柄的变量名
-  count: number      // 引用计数
+  owners: string[]   // 当前持有 Rc 句柄的变量名 / variables currently holding an Rc handle
+  count: number      // 引用计数 / reference count
   alive: boolean
   caption: JSX.Element
 }
 
-const frames: Frame[] = [
+const framesZh: Frame[] = [
   {
     code: 'let a = Rc::new(Node);',
     owners: ['a'],
@@ -83,16 +84,91 @@ const frames: Frame[] = [
   },
 ]
 
+const framesEn: Frame[] = [
+  {
+    code: 'let a = Rc::new(Node);',
+    owners: ['a'],
+    count: 1,
+    alive: true,
+    caption: (
+      <>
+        <code>Rc::new</code> puts a value on the heap with a <b>reference counter</b> attached. Right now <code>a</code> is
+        the only holder, so the count = <b>1</b>. <code>Rc</code> = Reference Counted.
+      </>
+    ),
+  },
+  {
+    code: 'let b = Rc::clone(&a);',
+    owners: ['a', 'b'],
+    count: 2,
+    alive: true,
+    caption: (
+      <>
+        <code>Rc::clone</code> <b>doesn't copy the heap data</b> — it just hands out another handle to the same data and
+        bumps the count by 1 → <b>2</b>. Like two JS variables pointing at the same object, except the count is explicit here.
+      </>
+    ),
+  },
+  {
+    code: 'let c = Rc::clone(&a);',
+    owners: ['a', 'b', 'c'],
+    count: 3,
+    alive: true,
+    caption: (
+      <>
+        Share it once more, count = <b>3</b>. Three variables now have <b>shared read-only ownership</b> — exactly the case
+        single ownership can't handle and where you reach for <code>Rc</code> (e.g. one node referenced from many places in a graph or tree).
+      </>
+    ),
+  },
+  {
+    code: '} // c leaves scope',
+    owners: ['a', 'b'],
+    count: 2,
+    alive: true,
+    caption: (
+      <>
+        <code>c</code> is dropped, count -1 → <b>2</b>. The <b>data isn't freed yet</b> — someone is still using it.
+      </>
+    ),
+  },
+  {
+    code: '} // b leaves scope',
+    owners: ['a'],
+    count: 1,
+    alive: true,
+    caption: (
+      <>
+        <code>b</code> is gone too, count → <b>1</b>. Still alive.
+      </>
+    ),
+  },
+  {
+    code: '} // a leaves scope',
+    owners: [],
+    count: 0,
+    alive: false,
+    caption: (
+      <>
+        The last holder <code>a</code> leaves, the count hits <b>0</b> — and right then Rust <b>frees the heap data automatically</b>.
+        No GC; it's simply "count reaches 0, so drop". Note: <code>Rc</code> is <b>single-threaded</b> only; use <code>Arc</code> across threads.
+      </>
+    ),
+  },
+]
+
 export default function RcViz() {
+  const lang = useLang()
+  const frames = lang === 'en' ? framesEn : framesZh
   const { step, next, prev, reset, go } = useSteps(frames.length)
   const f = frames[step]
   const slots = ['a', 'b', 'c']
 
   return (
     <div className="viz">
-      <svg viewBox="0 0 480 230" width="100%" role="img" aria-label="Rc 引用计数示意">
-        {/* 栈上的句柄 */}
-        <text x={30} y={28} fill="var(--fg-2)" fontSize="12" fontWeight="700">栈 · Rc 句柄</text>
+      <svg viewBox="0 0 480 230" width="100%" role="img" aria-label={lang === 'en' ? 'Rc reference counting diagram' : 'Rc 引用计数示意'}>
+        {/* 栈上的句柄 / stack handles */}
+        <text x={30} y={28} fill="var(--fg-2)" fontSize="12" fontWeight="700">{lang === 'en' ? 'Stack · Rc handles' : '栈 · Rc 句柄'}</text>
         {slots.map((name, i) => {
           const has = f.owners.includes(name)
           const y = 46 + i * 56
@@ -120,14 +196,14 @@ export default function RcViz() {
           )
         })}
 
-        {/* 堆数据 + 计数器 */}
-        <text x={300} y={28} fill="var(--fg-2)" fontSize="12" fontWeight="700">堆 · 共享数据</text>
+        {/* 堆数据 + 计数器 / heap data + counter */}
+        <text x={300} y={28} fill="var(--fg-2)" fontSize="12" fontWeight="700">{lang === 'en' ? 'Heap · shared data' : '堆 · 共享数据'}</text>
         {f.alive ? (
           <g>
             <rect x={300} y={70} width={150} height={90} rx={12}
               fill="var(--rust-soft)" stroke="var(--rust-deep)" strokeWidth={1.6} />
             <text x={375} y={100} fill="var(--rust)" fontSize="15" fontWeight="700" textAnchor="middle">
-              Node 数据
+              {lang === 'en' ? 'Node data' : 'Node 数据'}
             </text>
             {/* 计数徽章 */}
             <motion.g key={f.count} initial={{ scale: 0.6 }} animate={{ scale: 1 }}>
@@ -146,7 +222,7 @@ export default function RcViz() {
             <rect x={300} y={70} width={150} height={90} rx={12}
               fill="none" stroke="var(--fg-3)" strokeDasharray="5 4" />
             <text x={375} y={120} fill="var(--fg-3)" fontSize="13" textAnchor="middle">
-              计数=0,已释放
+              {lang === 'en' ? 'count = 0, freed' : '计数=0,已释放'}
             </text>
           </g>
         )}

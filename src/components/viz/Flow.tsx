@@ -1,4 +1,5 @@
 import './viz.css'
+import { useLang } from '../../i18n/lang'
 
 export interface FlowNode {
   id: string
@@ -40,6 +41,7 @@ export default function Flow({
   width?: number
   height?: number
 }) {
+  const lang = useLang()
   const byId = (id: string) => nodes.find((n) => n.id === id)!
   const center = (n: FlowNode) => ({
     cx: n.x + (n.w ?? 130) / 2,
@@ -80,7 +82,7 @@ export default function Flow({
 
   return (
     <div className="viz">
-      <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label="流程图">
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={lang === 'en' ? 'flowchart' : '流程图'}>
         <defs>
           <marker id="flow-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
             <path d="M0,0 L7,3 L0,6 Z" fill="var(--fg-2)" />

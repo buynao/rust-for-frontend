@@ -2,8 +2,13 @@ import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import { MicroLab } from '../../components/Lab'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 export default function ErrorHandling() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -179,6 +184,194 @@ fn main() {
       <Callout kind="info" title="本章要点 & 下一步">
         ① 错误是值(<code>Result</code>),写在类型里;② <code>?</code> 优雅地传播错误;③ <code>unwrap</code> 方便但会崩,生产慎用;
         ④ Option 管「空」、Result 管「错」。接下来进入抽象的世界:trait 与泛型,看 Rust 如何做「零成本」的接口与复用。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        In JS, a function might throw — but <strong>you can't tell from the type signature</strong>. Unless you read
+        the docs or the source, you'd never know that <code>JSON.parse</code> can throw. Rust flips this around:
+        <strong>errors are ordinary return values</strong>, written right into the type, and the compiler forces you to
+        handle them. By the end of this chapter you'll see that "error handling" can be both rigorous and elegant.
+      </p>
+
+      <h2>Two kinds of errors: recoverable vs unrecoverable</h2>
+      <ul>
+        <li><strong>Recoverable errors</strong> (file not found, network timeout, parse failure) → return <code>Result&lt;T, E&gt;</code> and let the caller decide what to do.</li>
+        <li><strong>Unrecoverable errors</strong> (array out of bounds, a failed assertion — "the program is just plain wrong") → <code>panic!</code> and terminate immediately. Think of the kind of logic bug in JS you'd never bother to catch.</li>
+      </ul>
+
+      <KeyTerm term="Result: an error is a value" en="Result<T, E>" analogy="It merges the try/catch 'success path' and 'failure path' into a single return value that the caller must handle explicitly.">
+        <code>Result</code> is also an enum, with two variants:
+        <CodeBlock code={`enum Result<T, E> {
+    Ok(T),    // success, carrying the result T
+    Err(E),   // failure, carrying the error E
+}`} />
+        A function that returns <code>Result</code> is declaring "I might fail" right in its type — and if the caller doesn't handle it, the code won't compile.
+      </KeyTerm>
+
+      <h2>Side by side: try/catch vs Result</h2>
+      <Compare
+        js={`function parse(s) {
+  // the signature gives no hint that this can throw
+  return JSON.parse(s);
+}
+try {
+  const data = parse(input);
+  use(data);
+} catch (e) {
+  console.error("failed", e);
+}`}
+        rust={`fn parse(s: &str) -> Result<Data, Error> {
+    // the type says it outright: this might be Err
+    serde_json::from_str(s)
+}
+match parse(input) {
+    Ok(data) => use_data(data),
+    Err(e) => eprintln!("failed {e}"),
+}`}
+        note="JS exceptions are 'implicit control flow' — they can bubble up from anywhere deep in the call stack. Rust turns failure into an explicit value, so the flow is obvious and you can't accidentally forget to handle it."
+      />
+
+      <h2>The ? operator: the "automatic transmission" of error handling</h2>
+      <p>
+        Writing a <code>match</code> at every step to propagate errors gets verbose fast. Rust gives you <code>?</code>:
+        <strong>on success it unwraps and continues; on failure it returns that error early</strong>. One symbol
+        replaces a chunk of boilerplate:
+      </p>
+      <Compare
+        js={`async function load() {
+  // either try/catch manually, or let it bubble up
+  const res = await fetch(url);
+  const text = await res.text();
+  const data = JSON.parse(text);
+  return data;
+}`}
+        rust={`fn load() -> Result<Data, Error> {
+    let text = read_file("data.json")?; // on failure, return Err
+    let data = parse(&text)?;           // on failure, return Err
+    Ok(data)                            // only reached if all succeed
+}`}
+        note="Every ? is a checkpoint that 'continues on success, short-circuits and returns on failure'. It's finer-grained than JS's try/catch, and you can't miss a single step."
+      />
+
+      <Figure title="Control flow of the ? operator" caption="? compresses the 'unwrap on success / return early on failure' logic into a single character — especially clean when you chain calls.">
+        <Flow
+          width={680}
+          height={170}
+          nodes={[
+            { id: 'call', x: 20, y: 60, w: 130, label: 'foo()?', sub: 'call and unwrap', tone: 'rust' },
+            { id: 'check', x: 200, y: 55, w: 120, h: 60, label: 'Ok or Err?', tone: 'info', shape: 'diamond' },
+            { id: 'ok', x: 380, y: 20, w: 150, label: 'take the Ok value', sub: 'keep going', tone: 'ok' },
+            { id: 'err', x: 380, y: 105, w: 180, label: 'return Err(e)', sub: 'exit the function now', tone: 'warn' },
+          ]}
+          edges={[
+            { from: 'call', to: 'check' },
+            { from: 'check', to: 'ok', label: 'Ok' },
+            { from: 'check', to: 'err', label: 'Err' },
+          ]}
+        />
+      </Figure>
+
+      <h2>unwrap / expect: handy but dangerous</h2>
+      <p>
+        You'll see <code>.unwrap()</code> in plenty of examples: it "bets that this one succeeds" — on success it
+        takes the value, on failure it <code>panic</code>s and crashes. Fine for prototypes and demos, but
+        <strong>use it with care in production code</strong>:
+      </p>
+      <CodeBlock
+        code={`let n: i32 = "42".parse().unwrap();        // success, n = 42
+let bad: i32 = "abc".parse().unwrap();     // 💥 panic! the program crashes
+
+// expect crashes too, but lets you attach a message — friendlier to debug
+let port: u16 = env_var.parse()
+    .expect("PORT must be a number");
+
+// safer: propagate with ?, or use match / unwrap_or for a default
+let count: i32 = input.parse().unwrap_or(0); // on failure, fall back to 0`}
+      />
+      <Callout kind="danger" title="unwrap is an 'unhandled bomb'">
+        Every <code>unwrap()</code> is a potential crash site — the equivalent of calling something bare in JS because
+        you're "sure it can't go wrong". When you spot an <code>unwrap</code> in production code during review, raise an
+        eyebrow — prefer handling it properly with <code>?</code>, <code>unwrap_or</code>, or <code>match</code>.
+      </Callout>
+
+      <h2>Option vs Result: when to use which?</h2>
+      <Callout kind="rust">
+        <strong>Option&lt;T&gt;</strong> expresses "<strong>maybe nothing</strong>" (no extra reason — e.g. a lookup
+        that missed); <strong>Result&lt;T, E&gt;</strong> expresses "<strong>maybe a failure, with a reason E</strong>"
+        (e.g. a parse error or IO error). Both can be propagated with <code>?</code>, and both can be unwrapped with
+        <code>match</code>.
+      </Callout>
+
+      <Quiz
+        question="In a function, what does the ? in let data = fetch(url)?; do?"
+        options={[
+          { text: 'If fetch returns Ok, take the inner value and bind it to data; if it returns Err, immediately make the current function return that Err', correct: true },
+          { text: 'It turns fetch into an async call' },
+          { text: 'It ignores fetch\'s error and keeps going' },
+          { text: 'It panics and crashes if there is an error' },
+        ]}
+        explain={
+          <>
+            <code>?</code> is syntactic sugar for "unwrap on success / short-circuit return on failure" — it neither
+            ignores the error nor crashes; instead it <strong>propagates</strong> the error up to the caller. To use
+            <code>?</code>, the current function's return type also has to be a <code>Result</code> (or <code>Option</code>).
+          </>
+        }
+      />
+
+      <h2>Hands-on exercise</h2>
+      <MicroLab
+        title="Turn unwrap into Result + ?"
+        minutes={8}
+        goal={
+          <>
+            The <code>parse_sum</code> below uses two <code>unwrap()</code> calls and panics on non-numeric input.
+            Rewrite it to return a <code>Result</code> and propagate errors with <code>?</code>, so that <code>main</code>
+            can handle the two kinds of input — success and failure — <strong>gracefully</strong> instead of crashing.
+          </>
+        }
+        starter={`fn parse_sum(a: &str, b: &str) -> i32 {
+    a.parse::<i32>().unwrap() + b.parse::<i32>().unwrap()
+}
+
+fn main() {
+    println!("sum = {}", parse_sum("3", "5"));
+    println!("sum = {}", parse_sum("3", "x")); // this line panics right now
+}`}
+        hint={
+          <>
+            ① Change the return type to <code>Result&lt;i32, std::num::ParseIntError&gt;</code>;
+            ② replace the two <code>.unwrap()</code> with <code>?</code>; ③ wrap the result in <code>Ok(...)</code> at the
+            end of the function; ④ in <code>main</code>, use <code>match</code> to handle <code>Ok</code> / <code>Err</code> separately.
+          </>
+        }
+        solution={`fn parse_sum(a: &str, b: &str) -> Result<i32, std::num::ParseIntError> {
+    Ok(a.parse::<i32>()? + b.parse::<i32>()?)
+}
+
+fn main() {
+    for (a, b) in [("3", "5"), ("3", "x")] {
+        match parse_sum(a, b) {
+            Ok(n) => println!("sum = {n}"),
+            Err(e) => println!("parse failed: {e}"),
+        }
+    }
+}`}
+        expectedOutput={`sum = 8
+parse failed: invalid digit found in string`}
+      />
+
+      <Callout kind="info" title="Key takeaways & what's next">
+        ① Errors are values (<code>Result</code>), written into the type; ② <code>?</code> propagates errors elegantly;
+        ③ <code>unwrap</code> is convenient but crashes — use it sparingly in production; ④ Option handles "empty",
+        Result handles "error". Next we enter the world of abstraction: traits and generics, and how Rust builds
+        "zero-cost" interfaces and reuse.
       </Callout>
     </>
   )

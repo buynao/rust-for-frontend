@@ -2,8 +2,13 @@ import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import { ErrorDrill, MicroLab } from '../../components/Lab'
 import BorrowViz from '../../components/viz/BorrowViz'
+import { useLang } from '../../i18n/lang'
 
 export default function Borrowing() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -231,6 +236,247 @@ println!("{r1} {r2} {r3}");`} />
       <Callout kind="info" title="本章要点 & 下一步">
         ① <code>&</code> 借用不夺走所有权;② 只读借用可多个、可变借用须唯一且互斥;③ 这条规则消灭数据竞争与迭代器失效;
         ④ 引用不能比数据活得久(生命周期)。接下来换换脑子,看怎么用结构体和枚举给数据建模。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        In the last chapter we saw that passing a value into a function "takes away" its ownership. Handing it back every
+        single time gets tedious fast. The fix is <strong>borrowing</strong>: you create a <strong>reference</strong> so
+        someone can "take a look" without taking ownership away. In this chapter you'll get to know Rust's most famous
+        gatekeeper—the <strong>borrow checker</strong>.
+      </p>
+
+      <h2>References: &T lends without moving ownership</h2>
+      <Compare
+        js={`// JS objects are passed by reference anyway
+function len(s) {
+  return s.length;
+}
+const s = "hello";
+len(s);            // s still usable afterward`}
+        rust={`fn len(s: &String) -> usize {  // & means borrow
+    s.len()
+}
+let s = String::from("hello");
+len(&s);           // pass a reference &s
+println!("{s}");   // ✅ ownership untouched, s is still here`}
+        note="& creates a reference (a borrow). When the function is done, the borrow ends—ownership stays with s the whole time. This is the elegant alternative to last chapter's clunky hand-it-back-and-forth dance."
+      />
+
+      <h2>Two kinds of borrow: read-only vs writable</h2>
+      <ul>
+        <li><code>&T</code> —— an <strong>immutable borrow</strong> (shared borrow), read-only. You can have many at once.</li>
+        <li><code>&mut T</code> —— a <strong>mutable borrow</strong> (exclusive borrow), can modify. Only one allowed at a time, and it can't coexist with any read-only borrow.</li>
+      </ul>
+      <CodeBlock
+        runnable
+        title="A mutable borrow to change data"
+        code={`fn main() {
+    let mut s = String::from("hello");
+    append(&mut s);          // lend out a mutable reference
+    println!("{s}");
+}
+
+fn append(s: &mut String) { // receive a mutable reference
+    s.push_str(", world");
+}`}
+        output={`hello, world`}
+      />
+
+      <h2>The core rule: "read" and "write" are mutually exclusive</h2>
+      <p>
+        The borrow checker enforces just one ironclad rule. Switch between the scenarios below and verify it for yourself:
+      </p>
+      <Callout kind="rust" title="The borrowing rules">
+        At any given moment, for the same piece of data, you may have either <strong>any number of immutable borrows
+        (&)</strong> or <strong>exactly one mutable borrow (&mut)</strong>. <strong>The two cannot exist at the same time.</strong>
+      </Callout>
+
+      <Figure
+        title="Interactive: the four borrow scenarios"
+        caption="Switch tabs to see which combinations the compiler allows and which ones error out. Orange solid line = mutable borrow, blue = read-only borrow."
+      >
+        <BorrowViz />
+      </Figure>
+
+      <h2>Why does this rule matter so much?</h2>
+      <p>
+        As a frontend dev, you've almost certainly hit this trap: <strong>modifying an array while iterating over it</strong>,
+        leading to skipped elements or an infinite loop. At its core that's "reading and writing the same data at the same
+        time." JS lets you do it; Rust forbids it outright at compile time:
+      </p>
+      <Compare
+        js={`const arr = [1, 2, 3, 4];
+for (const x of arr) {
+  if (x === 2) arr.push(99); // mutate while iterating
+}
+// weird behavior / possible infinite loop, only caught at runtime`}
+        rust={`let mut v = vec![1, 2, 3, 4];
+for x in &v {          // &v lends a read-only reference
+    if *x == 2 {
+        v.push(99);    // ❌ compile error:
+        // cannot borrow \`v\` as mutable
+        // because it is also borrowed as immutable
+    }
+}`}
+        note="The for loop holds a read-only borrow of v while you try to grab a mutable borrow to push—that breaks the ironclad rule, so the compiler stops you. Same bug, except in Rust you literally can't write it."
+      />
+      <Callout kind="tip" title="One line to remember">
+        This rule wipes out an entire class of bugs: <strong>data races</strong> (in concurrency) and <strong>iterator
+        invalidation</strong> (in single-threaded code) are both just "reads and writes fighting." Rust turns that into a
+        compile error instead of a runtime mystery.
+      </Callout>
+
+      <h2>Dangling references? Won't compile</h2>
+      <p>
+        In C, returning a pointer to a local variable is a classic bug (once the function returns, that memory is gone).
+        Rust uses <strong>lifetime</strong> analysis to reject this kind of code outright:
+      </p>
+      <CodeBlock
+        title="This won't compile"
+        code={`fn dangle() -> &String {     // ❌ returns a reference…
+    let s = String::from("hi");
+    &s                       // …but s is dropped when the function ends!
+}                            // the reference would point to freed memory
+
+// compiler: missing lifetime specifier / \`s\` does not live long enough
+// the right move: return String directly (hand over ownership), don't return a reference`}
+      />
+
+      <KeyTerm term="Lifetime" en="lifetime" analogy="Think of it as a compile-time contract — 'this reference is guaranteed valid for this span of time.' Most of the time the compiler infers it for you, so you rarely write it by hand.">
+        A lifetime annotation (like <code>&'a str</code>) tells the compiler "how long this reference is valid," ensuring
+        a reference never outlives the data it points to. In everyday code, the compiler infers it automatically about 90%
+        of the time (this is called <strong>lifetime elision</strong>); only a few complex signatures need you to write it
+        out. While you're starting out, it's enough to keep the intuition: "a reference can't outlive its data."
+      </KeyTerm>
+
+      <h2>Slices: borrowing a part</h2>
+      <p>
+        <code>&str</code> is really just "a slice borrow of a <code>String</code>." Slices let you reference part of a
+        collection without copying it:
+      </p>
+      <CodeBlock
+        runnable
+        code={`fn main() {
+    let s = String::from("hello world");
+    let hello: &str = &s[0..5];   // borrow the first 5 bytes
+    let world: &str = &s[6..11];
+    println!("{hello} | {world}");
+
+    let nums = [10, 20, 30, 40, 50];
+    let mid: &[i32] = &nums[1..4]; // array slice
+    println!("{:?}", mid);
+}`}
+        output={`hello | world
+[20, 30, 40]`}
+      />
+
+      <Quiz
+        question="Will the code below compile?"
+        options={[
+          { text: 'Yes—r1, r2, and r3 are all read-only borrows, so they can coexist', correct: true },
+          { text: 'No, a variable can be borrowed at most once' },
+          { text: 'No, because s is not mut' },
+          { text: 'Yes, but r3 will trigger a warning' },
+        ]}
+        explain={
+          <>
+            <CodeBlock code={`let s = String::from("hi");
+let r1 = &s;
+let r2 = &s;
+let r3 = &s;
+println!("{r1} {r2} {r3}");`} />
+            These are all <strong>immutable borrows</strong>, and you can have as many as you like, because everyone is just
+            reading and nobody interferes with anyone else. The exclusivity rule only kicks in once a <code>&mut</code> shows up.
+          </>
+        }
+      />
+
+      <h2>Error drill</h2>
+      <ErrorDrill
+        code={`fn main() {
+    let mut v = vec![1, 2, 3];
+    for x in &v {
+        if *x == 2 {
+            v.push(99);
+        }
+    }
+}`}
+        error={`error[E0502]: cannot borrow \`v\` as mutable because it is also borrowed as immutable
+ --> src/main.rs:5:13
+  |
+3 |     for x in &v {
+  |              -- immutable borrow occurs here
+4 |         if *x == 2 {
+5 |             v.push(99);
+  |             ^^^^^^^^^^ mutable borrow occurs here
+6 |         }
+7 |     }
+  |     - immutable borrow later used here`}
+        question="What exactly is the compiler stopping?"
+        options={[
+          { text: 'The for loop is holding an immutable borrow of v (&v), and the loop body tries to grab a mutable borrow to push—violating "read/write exclusivity"', correct: true },
+          { text: 'Because v wasn\'t declared mut' },
+          { text: 'Because the vec! macro is used incorrectly' },
+          { text: 'Because dereferencing with *x is an illegal operation' },
+        ]}
+        explain={
+          <>
+            <code>for x in &v</code> holds an <strong>immutable borrow</strong> of <code>v</code> for the entire loop, while
+            <code>v.push</code> needs a <strong>mutable borrow</strong>—the two can't coexist. This is exactly the classic
+            "modify a collection while iterating" bug, and Rust stops it right at compile time. The exercise below is about
+            fixing it.
+          </>
+        }
+      />
+
+      <h2>Hands-on exercise</h2>
+      <MicroLab
+        title="Safely append while iterating"
+        minutes={6}
+        goal={
+          <>
+            Rewrite the conflicting code above so it compiles and prints <code>[1, 2, 3, 99]</code>.
+            The idea: don't mutate <code>v</code> while you're borrowing it.
+          </>
+        }
+        starter={`fn main() {
+    let mut v = vec![1, 2, 3];
+    for x in &v {
+        if *x == 2 {
+            v.push(99);   // ❌ borrow conflict
+        }
+    }
+    println!("{:?}", v);
+}`}
+        hint={
+          <>
+            One clean approach: iterate over a <strong>copy/snapshot of the original data</strong> to decide what to add, then
+            push after the loop ends; or collect the values you want to append into a separate <code>Vec</code> and
+            <code>extend</code> them in once you're outside the loop.
+          </>
+        }
+        solution={`fn main() {
+    let mut v = vec![1, 2, 3];
+    let mut to_add = vec![];
+    for x in &v {                 // read-only borrow, don't touch v inside the loop
+        if *x == 2 { to_add.push(99); }
+    }
+    v.extend(to_add);             // modify only after the borrow ends
+    println!("{:?}", v);
+}`}
+        expectedOutput={`[1, 2, 3, 99]`}
+      />
+
+      <Callout kind="info" title="Key takeaways & next step">
+        ① <code>&</code> borrows without taking ownership; ② you can have many immutable borrows, but a mutable borrow must be
+        unique and exclusive; ③ this rule eliminates data races and iterator invalidation; ④ a reference can't outlive its data
+        (lifetimes). Next, let's switch gears and look at how to model data with structs and enums.
       </Callout>
     </>
   )

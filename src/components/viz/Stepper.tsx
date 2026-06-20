@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLang } from '../../i18n/lang'
 
 /** 受控步进的 hook:返回当前步、控制函数 */
 export function useSteps(total: number, autoMs = 0) {
@@ -66,25 +67,28 @@ export function StepperControls({
   onTogglePlay,
   canPlay,
 }: StepperControlsProps) {
+  const lang = useLang()
   return (
     <div className="stepper">
       <button className="stepper-btn" onClick={onPrev} disabled={step === 0}>
-        ← 上一步
+        {lang === 'en' ? '← Prev' : '← 上一步'}
       </button>
       <button
         className="stepper-btn primary"
         onClick={onNext}
         disabled={step >= total - 1}
       >
-        下一步 →
+        {lang === 'en' ? 'Next →' : '下一步 →'}
       </button>
       {canPlay && onTogglePlay && (
         <button className="stepper-btn" onClick={onTogglePlay}>
-          {playing ? '⏸ 暂停' : '▶ 自动播放'}
+          {playing
+            ? lang === 'en' ? '⏸ Pause' : '⏸ 暂停'
+            : lang === 'en' ? '▶ Autoplay' : '▶ 自动播放'}
         </button>
       )}
       <button className="stepper-btn" onClick={onReset}>
-        ↺ 重置
+        {lang === 'en' ? '↺ Reset' : '↺ 重置'}
       </button>
       <div className="stepper-dots">
         {Array.from({ length: total }, (_, i) => (
@@ -92,7 +96,7 @@ export function StepperControls({
             key={i}
             className={`stepper-dot ${i === step ? 'active' : i < step ? 'passed' : ''}`}
             onClick={() => onGo(i)}
-            aria-label={`第 ${i + 1} 步`}
+            aria-label={lang === 'en' ? `Step ${i + 1}` : `第 ${i + 1} 步`}
           />
         ))}
       </div>

@@ -2,8 +2,13 @@ import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import { MicroLab } from '../../components/Lab'
 import ClosureViz from '../../components/viz/ClosureViz'
+import { useLang } from '../../i18n/lang'
 
 export default function Closures() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -180,6 +185,199 @@ let b: Vec<i32> = nums.iter().map(|&x| x * 2).collect();`}
         ① 闭包语法 <code>|x| ...</code> ≈ 箭头函数;② 按用法自动以「借用 / 可变借用 / move」捕获环境,对应
         <code>Fn / FnMut / FnOnce</code>;③ 线程与异步里几乎总要 <code>move</code>;④ 用 <code>impl Fn</code> 传递/返回闭包。
         接下来我们就用闭包去喂迭代器——你最熟悉的 map/filter 链。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        Arrow functions are a frontend lifeline: callbacks, <code>map</code>, event handlers all rely on them.
+        Rust&apos;s <strong>closures</strong> look very similar, but because of ownership they add one layer you need to
+        understand: <strong>&quot;what exactly does this closure capture from the surrounding variables — a borrow? a
+        mutable borrow? or ownership?&quot;</strong> Once that clicks, closures in async and multithreaded code will stop
+        confusing you.
+      </p>
+
+      <h2>Syntax: |params| expression</h2>
+      <Compare
+        js={`const square = x => x * x;
+const add = (a, b) => a + b;
+const greet = () => console.log("hi");
+
+[1, 2, 3].map(x => x * 2);`}
+        rust={`let square = |x| x * x;
+let add = |a, b| a + b;
+let greet = || println!("hi");
+
+vec![1, 2, 3].iter().map(|x| x * 2);`}
+        note="Swap the arrow function's ( ) for | | around the parameters, and you've got a Rust closure. Most types can be inferred, so you usually leave them off."
+      />
+      <Callout kind="tip" title="With types and multiple lines">
+        When you need to, you can annotate types and write a multi-line block:
+        <CodeBlock code={`let add = |a: i32, b: i32| -> i32 {
+    let sum = a + b;
+    sum            // the last expression is the return value
+};`} />
+      </Callout>
+
+      <h2>The core idea: three ways a closure &quot;captures&quot; its environment</h2>
+      <p>
+        A closure can use variables from where it&apos;s defined (just like JS lexical scope). But Rust has to decide:
+        does the closure <strong>borrow</strong> that variable, or <strong>take</strong> it? The compiler picks the most
+        permissive option automatically, based on how the closure body uses it. Switch between the three scenarios below
+        to feel the difference:
+      </p>
+
+      <Figure
+        title="Interactive: Fn / FnMut / FnOnce — the three captures"
+        caption="Read-only → borrow (Fn); modify → mutable borrow (FnMut); consume/move → take ownership (FnOnce). Switch tabs to see each one's code and consequences."
+      >
+        <ClosureViz />
+      </Figure>
+
+      <KeyTerm term="the three traits" en="Fn / FnMut / FnOnce" analogy="Roughly, a tiering of &quot;how many times the closure can be called, and how it accesses its environment.&quot;">
+        A closure automatically implements one (or more) of these traits, which determines how it can be used:
+        <ul style={{ marginTop: 8 }}>
+          <li><code>Fn</code> — borrows the environment immutably, can be called <strong>many times</strong> (the most common case).</li>
+          <li><code>FnMut</code> — borrows the environment mutably, can be called many times, but each call mutates outside state.</li>
+          <li><code>FnOnce</code> — takes ownership of the environment, can be called <strong>at most once</strong> (because the second time, ownership is already gone).</li>
+        </ul>
+      </KeyTerm>
+
+      <h2>move: hauling ownership into the closure</h2>
+      <p>
+        The keyword to remember above all is <code>move</code>. It forces the closure to <strong>take</strong> ownership
+        of every captured variable. It&apos;s almost always required in <strong>threads</strong> and
+        <strong> async tasks</strong> — because the closure may outlive the current function and can&apos;t keep
+        borrowing local variables that are about to disappear:
+      </p>
+      <CodeBlock
+        runnable
+        title="move lets a closure safely cross thread boundaries"
+        code={`use std::thread;
+
+fn main() {
+    let data = vec![1, 2, 3];
+
+    // move: hand ownership of data to the new thread's closure
+    let handle = thread::spawn(move || {
+        println!("child thread got: {:?}", data);
+    });
+
+    // data can't be used here anymore — it's been moved into the closure
+    handle.join().unwrap();
+}`}
+        output={`child thread got: [1, 2, 3]`}
+      />
+      <Callout kind="rust" title="Why do thread closures always need move?">
+        A new thread may still be running after <code>main</code> finishes. If the closure only <strong>borrowed</strong>
+        <code> data</code>, and <code>data</code> vanished along with <code>main</code>, the thread would be accessing
+        dangling data. <code>move</code> hauls ownership inside, eliminating the problem at the root — which is exactly a
+        continuation of the ownership rules from the earlier chapters.
+      </Callout>
+
+      <h2>Closures as parameters and return values</h2>
+      <p>When you pass a closure to a function, use trait bounds (recall the previous chapter) to declare which kind of closure you accept:</p>
+      <CodeBlock
+        runnable
+        code={`// accepts a closure that can be called many times and doesn't mutate the environment
+fn apply_twice<F: Fn(i32) -> i32>(f: F, x: i32) -> i32 {
+    f(f(x))
+}
+
+// returning a closure: use impl Fn(...) (because closure types can't be written out directly)
+fn make_adder(n: i32) -> impl Fn(i32) -> i32 {
+    move |x| x + n      // move captures n, so it stays valid after returning
+}
+
+fn main() {
+    println!("{}", apply_twice(|x| x + 3, 10)); // (10+3)+3 = 16
+    let add5 = make_adder(5);
+    println!("{}", add5(100));                   // 105
+}`}
+        output={`16
+105`}
+      />
+      <Callout kind="js" title="Compared to higher-order functions in JS">
+        <code>make_adder</code> is JS&apos;s classic &quot;function factory&quot;: <code>{'const makeAdder = n => x => x + n'}</code>.
+        The difference is that Rust explicitly uses <code>move</code> to haul <code>n</code> into the returned closure, and
+        annotates the return type with <code>impl Fn</code>.
+      </Callout>
+
+      <h2>Function pointers vs. closures</h2>
+      <p>A closure that captures nothing from its environment is interchangeable with a plain function (its type is <code>fn</code>):</p>
+      <CodeBlock
+        code={`fn double(x: i32) -> i32 { x * 2 }
+
+let nums = vec![1, 2, 3];
+// these two lines are equivalent: you can pass a named function or a closure
+let a: Vec<i32> = nums.iter().map(|&x| double(x)).collect();
+let b: Vec<i32> = nums.iter().map(|&x| x * 2).collect();`}
+      />
+
+      <Quiz
+        question="A closure that uses move and consumes the captured Vec inside it (e.g. with into_iter) typically implements which trait?"
+        options={[
+          { text: 'Fn, because it can be called many times' },
+          { text: 'FnOnce, because it takes and consumes ownership, so it can only be called once', correct: true },
+          { text: 'FnMut, because it mutates the environment' },
+          { text: 'It implements no trait' },
+        ]}
+        explain={
+          <>
+            Once a closure <strong>consumes</strong> a captured value (moves out / releases ownership), that value no
+            longer exists by the second call, so it can only implement <code>FnOnce</code> — &quot;callable at most
+            once.&quot; If it only reads, it&apos;s <code>Fn</code>; if it mutates but doesn&apos;t consume, it&apos;s
+            <code> FnMut</code>.
+          </>
+        }
+      />
+
+      <h2>Hands-on exercise</h2>
+      <MicroLab
+        title="Make the counter closure compile"
+        minutes={5}
+        goal={
+          <>
+            Below we want a closure that works as a counter, adding 1 on each call. But it doesn&apos;t compile.
+            <strong> Add one keyword</strong> to fix it so it prints <code>1</code>, <code>2</code>, <code>3</code>. Run
+            it first to see the error, then think about which kind of capture this is (<code>FnMut</code>).
+          </>
+        }
+        starter={`fn main() {
+    let mut count = 0;
+    let inc = || { count += 1; count };  // the closure mutates count
+    println!("{}", inc());
+    println!("{}", inc());
+    println!("{}", inc());
+}`}
+        hint={
+          <>
+            A closure that mutates an outer variable is <code>FnMut</code>. To <strong>call it many times</strong> when it
+            mutates the environment, the closure binding itself must also be mutable. The problem isn&apos;t
+            <code> count</code> (it&apos;s already <code>mut</code>) — it&apos;s <code>inc</code>.
+          </>
+        }
+        solution={`fn main() {
+    let mut count = 0;
+    let mut inc = || { count += 1; count };  // the closure variable also needs mut
+    println!("{}", inc());
+    println!("{}", inc());
+    println!("{}", inc());
+}`}
+        expectedOutput={`1
+2
+3`}
+      />
+
+      <Callout kind="info" title="Key points & next step">
+        ① The closure syntax <code>|x| ...</code> ≈ an arrow function; ② it captures the environment automatically by
+        &quot;borrow / mutable borrow / move&quot; depending on usage, corresponding to <code>Fn / FnMut / FnOnce</code>;
+        ③ threads and async almost always need <code>move</code>; ④ use <code>impl Fn</code> to pass and return closures.
+        Next, we&apos;ll feed closures to iterators — the map/filter chains you know best.
       </Callout>
     </>
   )

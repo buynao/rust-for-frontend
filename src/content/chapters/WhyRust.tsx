@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure, Pill } from '../../components/Ui'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 export default function WhyRust() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -129,6 +134,150 @@ println!("{}", user.name);
       <Callout kind="info" title="这门课怎么学">
         每一章都会:① 用你熟悉的 JS/TS 做类比;② 给可以直接运行的代码;③ 用动画把抽象概念画出来。
         遇到 🧠 自测就动手点一点,遇到 ▶ 就去 Playground 跑一跑。下一章我们先把开发环境搭起来。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        If you're a frontend engineer, you might think of Rust as "that thing only
+        OS hackers touch." In reality, <strong>your everyday toolchain is already
+        packed with Rust</strong>. This chapter sets up the motivation: why it's
+        worth your time, and how it actually relates to the JavaScript / TypeScript
+        you already know.
+      </p>
+
+      <h2>Rust is already all around you</h2>
+      <p>
+        You may have never written a line of Rust, yet you <strong>run</strong>{' '}
+        Rust programs almost every day:
+      </p>
+      <ul>
+        <li><Pill>Bundling</Pill> <strong>SWC</strong> (Next.js's default compiler), <strong>Turbopack</strong>, <strong>Rspack</strong>, <strong>Rolldown</strong> — the next generation replacing Babel/webpack, all written in Rust.</li>
+        <li><Pill>Lint/format</Pill> <strong>Biome</strong> (formerly Rome) and <strong>Oxc</strong> — tens of times faster than ESLint + Prettier.</li>
+        <li><Pill>Runtimes</Pill> The core of <strong>Deno</strong>, and parts of <strong>Node</strong>.</li>
+        <li><Pill>Desktop</Pill> <strong>Tauri</strong> — an Electron alternative where you write the UI in frontend tech and the backend in Rust, with bundles an order of magnitude smaller.</li>
+        <li><Pill>Browser</Pill> <strong>Figma</strong> and <strong>Photoshop Web</strong> compile their performance-critical cores to <strong>WebAssembly</strong> and run them right in your browser.</li>
+      </ul>
+      <Callout kind="rust">
+        In other words: <strong>learning Rust isn't switching careers — it's being able to read and improve the very tools you stand on</strong>. The day a Vite plugin gets rewritten in Rust, or you want to build a blazing-fast code scanner for your team, this skill pays off immediately.
+      </Callout>
+
+      <h2>What does it solve that JS can't?</h2>
+      <p>
+        JavaScript has two famously "carefree" design choices: <strong>garbage
+        collection (GC)</strong> manages memory for you, and <strong>dynamic
+        typing</strong> lets you write whatever, wherever. The price: runtime
+        overhead, unpredictable hitches (GC pauses), and a whole class of bugs that
+        only blow up at runtime. Rust takes a different road:
+      </p>
+
+      <Compare
+        jsTitle="JavaScript: you find out at runtime"
+        rustTitle="Rust: caught at compile time"
+        js={`const user = users.find(u => u.id === id)
+// user might be undefined
+console.log(user.name)
+// 💥 only errors once you reach this line:
+// Cannot read properties of undefined`}
+        rust={`let user = users.iter().find(|u| u.id == id);
+// user's type is Option<&User>
+println!("{}", user.name);
+// ❌ won't compile: an Option must be unwrapped first
+// the compiler forces you to handle "not found"`}
+        note="Same class of bug: JS lets it explode in production, Rust flags it the moment you hit save. This is shifting errors left, taken to its limit."
+      />
+
+      <KeyTerm term="Zero-cost abstraction" en="zero-cost abstraction" analogy="Like TS types — they exist only at compile time, vanish completely at runtime, and never slow you down.">
+        Rust lets you write high-level, readable code (iterators, generics, traits),
+        yet the compiled machine code runs as fast as the low-level loop you'd have
+        hand-written. "What you don't use, you don't pay for — and what you do use,
+        you couldn't hand-code any faster."
+      </KeyTerm>
+
+      <h2>Three features that make frontend devs sit up</h2>
+      <p>Set aside the "systems programming" stereotype. From a frontend point of view, Rust's real selling points are:</p>
+      <ol>
+        <li><strong>No more <code>undefined is not a function</code></strong> — <code>Option</code>/<code>Result</code> bake "empty" and "error" into the type system, and the compiler makes you handle them.</li>
+        <li><strong>No data races</strong> — multithreaded concurrency is proven safe by the compiler, something you rarely even get to appreciate in JS's single-threaded world.</li>
+        <li><strong>No GC hitches</strong> — when memory is freed is deterministic (see the "Ownership" chapter), which is ideal for latency-sensitive cores.</li>
+      </ol>
+
+      <h2>From source to running: the fundamental difference from JS</h2>
+      <p>
+        JS is <strong>interpreted / JIT-compiled</strong>: source ships to the
+        browser, and the engine compiles as it runs. Rust is{' '}
+        <strong>ahead-of-time (AOT) compiled</strong>: it's turned into native
+        machine code or Wasm on your machine first, and users receive the finished
+        product. That's one extra "compile gate" — but that gate blocks an enormous
+        number of bugs for you.
+      </p>
+
+      <Figure title="The compile pipeline: how rustc turns code into an executable" caption="The borrow check is a stage unique to Rust and the source of its memory safety — the next two chapters take it apart in detail.">
+        <Flow
+          width={720}
+          height={150}
+          nodes={[
+            { id: 'src', x: 10, y: 50, w: 110, label: '.rs source', tone: 'muted' },
+            { id: 'check', x: 160, y: 50, w: 140, label: 'type + borrow check', sub: 'borrow checker', tone: 'rust' },
+            { id: 'mir', x: 340, y: 50, w: 110, label: 'LLVM IR', tone: 'info' },
+            { id: 'bin', x: 490, y: 30, w: 120, label: 'native executable', sub: 'x86 / ARM', tone: 'ok' },
+            { id: 'wasm', x: 490, y: 90, w: 120, label: 'WebAssembly', sub: '.wasm → browser', tone: 'ok' },
+          ]}
+          edges={[
+            { from: 'src', to: 'check' },
+            { from: 'check', to: 'mir', label: 'only if it passes' },
+            { from: 'mir', to: 'bin' },
+            { from: 'mir', to: 'wasm' },
+          ]}
+        />
+      </Figure>
+
+      <Callout kind="tip" title="Run a line before anything else">
+        No installs required. This classic Hello World <strong>is editable — just hit "▶ Run" to execute it right here</strong>. The code is sent to the official Rust Playground to compile in the cloud, and the output shows up below in real time. Try changing the name to your own and run it again.
+      </Callout>
+
+      <CodeBlock
+        runnable
+        title="hello.rs"
+        code={`fn main() {
+    let name = "frontend engineer";
+    println!("Hello, {name}! Welcome to Rust 🦀");
+}`}
+        output={`Hello, frontend engineer! Welcome to Rust 🦀`}
+      />
+      <p>
+        Look familiar? <code>fn</code> is like <code>function</code>, you write{' '}
+        <code>let</code> every day, and string interpolation{' '}
+        <code>{'{name}'}</code> is just like a template literal. The differences:
+        the trailing semicolon, that <code>!</code> after <code>println!</code> (it's
+        a "macro" — more next chapter), and <code>fn main()</code> being the
+        program's entry point.
+      </p>
+
+      <Quiz
+        question="Which of these best captures why frontend devs should learn Rust?"
+        options={[
+          { text: 'Because Rust is set to replace JavaScript as the browser language' },
+          { text: 'Because modern frontend tooling (bundlers, linters, runtimes) is increasingly rewritten in Rust, and it compiles to Wasm to run in the browser', correct: true },
+          { text: "Because Rust's syntax is simpler than JS and great for beginners" },
+          { text: "Because once you learn Rust you'll never have to write JS again" },
+        ]}
+        explain={
+          <>
+            Rust won't replace JS (they collaborate), and its syntax isn't exactly
+            simple. The real reason: it's already the <strong>foundation</strong> of
+            frontend infrastructure, and through WebAssembly it enters the browser
+            directly, living alongside your React/Vue app.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="How to take this course">
+        Every chapter will: ① draw analogies to the JS/TS you know; ② give you code you can run immediately; ③ use animations to draw out the abstract ideas. When you see a 🧠 quiz, click around; when you see ▶, go run it on the Playground. Next chapter, we'll get your dev environment set up.
       </Callout>
     </>
   )

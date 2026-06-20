@@ -1,18 +1,19 @@
 import { useState, type ReactNode } from 'react'
 import CodeBlock from './CodeBlock'
+import { useUI } from '../i18n/strings'
 import './Ui.css'
 
 /* ============================================================
    Callout —— 提示框
    ============================================================ */
 type CalloutKind = 'tip' | 'info' | 'warn' | 'danger' | 'rust' | 'js'
-const calloutMeta: Record<CalloutKind, { icon: string; label: string }> = {
-  tip: { icon: '💡', label: '小贴士' },
-  info: { icon: 'ℹ️', label: '说明' },
-  warn: { icon: '⚠️', label: '注意' },
-  danger: { icon: '🛑', label: '陷阱' },
-  rust: { icon: '🦀', label: 'Rust 视角' },
-  js: { icon: '🟨', label: 'JS 类比' },
+const calloutIcons: Record<CalloutKind, string> = {
+  tip: '💡',
+  info: 'ℹ️',
+  warn: '⚠️',
+  danger: '🛑',
+  rust: '🦀',
+  js: '🟨',
 }
 export function Callout({
   kind = 'info',
@@ -23,12 +24,12 @@ export function Callout({
   title?: string
   children: ReactNode
 }) {
-  const m = calloutMeta[kind]
+  const t = useUI()
   return (
     <div className={`callout callout-${kind}`}>
       <div className="callout-head">
-        <span className="callout-icon">{m.icon}</span>
-        <span className="callout-label">{title ?? m.label}</span>
+        <span className="callout-icon">{calloutIcons[kind]}</span>
+        <span className="callout-label">{title ?? t.calloutLabels[kind]}</span>
       </div>
       <div className="callout-body">{children}</div>
     </div>
@@ -85,6 +86,7 @@ export function KeyTerm({
   analogy?: string
   children: ReactNode
 }) {
+  const t = useUI()
   return (
     <div className="keyterm">
       <div className="keyterm-head">
@@ -94,7 +96,7 @@ export function KeyTerm({
       <div className="keyterm-body">{children}</div>
       {analogy && (
         <div className="keyterm-analogy">
-          <strong>前端类比：</strong>
+          <strong>{t.frontendAnalogy}</strong>
           {analogy}
         </div>
       )}
@@ -118,6 +120,7 @@ export function Quiz({
   options: QuizOption[]
   explain?: ReactNode
 }) {
+  const t = useUI()
   const [picked, setPicked] = useState<number | null>(null)
   const answered = picked !== null
   const isRight = answered && options[picked].correct
@@ -125,7 +128,7 @@ export function Quiz({
   return (
     <div className={`quiz ${answered ? (isRight ? 'quiz-right' : 'quiz-wrong') : ''}`}>
       <div className="quiz-q">
-        <span className="quiz-badge">🧠 自测</span>
+        <span className="quiz-badge">{t.quizBadge}</span>
         <span>{question}</span>
       </div>
       <div className="quiz-options">
@@ -156,11 +159,11 @@ export function Quiz({
       </div>
       {answered && (
         <div className="quiz-feedback">
-          <strong>{isRight ? '✅ 正确！' : '❌ 再想想'}</strong>
+          <strong>{isRight ? t.quizRight : t.quizWrong}</strong>
           {explain && <div className="quiz-explain">{explain}</div>}
           {!isRight && (
             <button className="quiz-retry" onClick={() => setPicked(null)}>
-              重试
+              {t.quizRetry}
             </button>
           )}
         </div>

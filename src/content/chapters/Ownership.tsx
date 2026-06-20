@@ -2,8 +2,13 @@ import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import { MicroLab } from '../../components/Lab'
 import OwnershipViz from '../../components/viz/OwnershipViz'
+import { useLang } from '../../i18n/lang'
 
 export default function Ownership() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -194,6 +199,229 @@ fn main() {
       <Callout kind="info" title="本章要点">
         ① 值的所有者唯一;② 拥有堆数据的类型赋值/传参会 move,原变量失效;③ Copy 类型(栈上小数据)赋值是拷贝;
         ④ 离开作用域自动 drop。带着这套模型,我们去看「借用」如何让代码既安全又好写。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        This is the single most important chapter in the whole course.{' '}
+        <strong>Ownership</strong> is what sets Rust apart from every other
+        mainstream language — it's the secret behind being "memory-safe without a
+        GC." Once it clicks, borrowing and lifetimes later on fall into place
+        almost on their own.
+      </p>
+
+      <h2>First, think: how does JS manage memory?</h2>
+      <p>
+        In JS you never worry about memory: once an object is no longer
+        referenced, the garbage collector (GC) sweeps it away at <strong>some
+        point</strong>. Convenient, but it comes at a cost: ① the GC runs at
+        unpredictable moments and might hitch right on a key animation frame; ② it
+        requires a resident runtime. C is the opposite extreme: whatever you{' '}
+        <code>malloc</code> you must <code>free</code> yourself — forget and you
+        leak memory; free twice or touch already-freed memory and you crash or get
+        exploited.
+      </p>
+      <Callout kind="rust" title="Rust's third way">
+        No GC, and no manual free either. At <strong>compile time</strong> the
+        compiler inserts the freeing code automatically based on the "ownership
+        rules," and guarantees you can never touch freed memory. Zero runtime
+        overhead, safety maxed out.
+      </Callout>
+
+      <h2>The three rules of ownership</h2>
+      <ol>
+        <li>Every value has one <strong>owner</strong> variable.</li>
+        <li>At any moment there can be <strong>only one</strong> owner.</li>
+        <li>When the owner <strong>goes out of scope</strong>, the value is freed automatically (its <code>drop</code> is called).</li>
+      </ol>
+      <p>That's all three. The tricky part is the "move" behavior that rule two introduces — let's watch it frame by frame:</p>
+
+      <Figure
+        title="Animation: move and drop of a String"
+        caption="Click 'Next' to step through it. The key point: assigning to a new variable moves ownership rather than copying the data, and the old variable is invalidated immediately."
+      >
+        <OwnershipViz />
+      </Figure>
+
+      <h2>move: assignment transfers ownership</h2>
+      <p>
+        For types that <strong>own heap data</strong> (like <code>String</code>{' '}
+        or <code>Vec</code>), assigning to another variable or passing into a
+        function <strong>moves</strong> ownership, and the original variable is
+        immediately invalidated. This is completely different from JS:
+      </p>
+      <Compare
+        js={`let s1 = "hello";
+let s2 = s1;        // both variables still work
+console.log(s1);    // ✅ "hello"
+console.log(s2);    // ✅ "hello"
+// in JS strings are values / shared refs, use freely`}
+        rust={`let s1 = String::from("hello");
+let s2 = s1;        // ownership moves from s1 to s2
+println!("{s2}");   // ✅
+println!("{s1}");   // ❌ compile error:
+// borrow of moved value: \`s1\``}
+        note="Why design it this way? Because if both s1 and s2 'owned' the same heap allocation, it would be freed twice (double free) when the scope ends. move keeps ownership unique, eliminating the problem at the root."
+      />
+
+      <KeyTerm term="Copy types" en="Copy trait" analogy="Like primitives in JS (number, boolean): assignment is a copy, and the two are independent.">
+        Integers, floats, <code>bool</code>, <code>char</code>, and tuples made
+        entirely of them live wholly on the stack and are dirt cheap to copy, so
+        they implement <code>Copy</code>: assignment <strong>copies</strong>{' '}
+        rather than moves, and the original variable stays usable.
+        <CodeBlock code={`let x = 5;
+let y = x;          // i32 is Copy, this is a copy
+println!("{x} {y}"); // ✅ 5 5, x is still valid`} />
+      </KeyTerm>
+
+      <Callout kind="tip" title="A trick for deciding move vs. not">
+        Ask yourself: "Does this value hold a resource on the heap that needs to be
+        freed?" Yes (String/Vec/...) → move; no, just small stack data → Copy. The
+        compiler will tell you which one it is.
+      </Callout>
+
+      <h2>Want two copies? Use clone</h2>
+      <p>
+        If you genuinely need two independent <code>String</code>s, explicitly{' '}
+        <code>.clone()</code> to deep-copy the heap data. Rust makes "expensive
+        copies" <strong>visible</strong> rather than letting them happen silently:
+      </p>
+      <CodeBlock
+        runnable
+        code={`fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1.clone();   // explicit deep copy; the heap now holds two "hello"s
+    println!("{s1} and {s2}"); // ✅ both valid
+}`}
+        output={`hello and hello`}
+      />
+
+      <h2>Ownership and functions</h2>
+      <p>
+        Passing a value into a function <strong>moves ownership in</strong> too.
+        When the function ends, the value is dropped — unless the function{' '}
+        <strong>hands it back</strong>. This is exactly the hassle that the next
+        chapter on "borrowing" solves:
+      </p>
+      <CodeBlock
+        runnable
+        title="Ownership moves with the function call"
+        code={`fn main() {
+    let s = String::from("hello");
+    takes_ownership(s);       // s's ownership moves into the function
+    // println!("{s}");       // ❌ s is invalid, this line won't compile
+
+    let n = 5;
+    makes_copy(n);            // i32 is Copy, a copy is passed
+    println!("n is still usable: {n}"); // ✅
+}
+
+fn takes_ownership(text: String) {
+    println!("I received: {text}");
+} // text goes out of scope here and is dropped
+
+fn makes_copy(num: i32) {
+    println!("I received a copy: {num}");
+}`}
+        output={`I received: hello
+I received a copy: 5
+n is still usable: 5`}
+      />
+      <Callout kind="warn" title="Handing things back and forth gets tiring">
+        If every function had to return the value so you could keep using it, the
+        code would get very verbose. So Rust offers{' '}
+        <strong>borrowing</strong> — "lend it to the function for a bit, without
+        transferring ownership." That's the star of the next chapter.
+      </Callout>
+
+      <Quiz
+        question="Which line in the code below causes a compile error?"
+        options={[
+          { text: 'Line 2: let v2 = v;' },
+          { text: 'Line 3: println!("{:?}", v2);' },
+          { text: 'Line 4: println!("{:?}", v);', correct: true },
+          { text: "No error, it runs fine" },
+        ]}
+        explain={
+          <>
+            <CodeBlock code={`let v = vec![1, 2, 3];        // 1: Vec owns heap data
+let v2 = v;                   // 2: ownership moves to v2
+println!("{:?}", v2);         // 3: ✅ v2 is valid
+println!("{:?}", v);          // 4: ❌ v has been moved`} />
+            <code>Vec</code>, like <code>String</code>, owns heap data, so
+            assignment is a move. Line 4 uses the moved <code>v</code>, and the
+            compiler reports <code>borrow of moved value</code>.
+          </>
+        }
+      />
+
+      <h2>Hands-on practice</h2>
+      <MicroLab
+        title="Fix 3 'moved value' errors"
+        minutes={8}
+        goal={
+          <>
+            The <code>main</code> below has <strong>three</strong> "use of moved
+            value" compile errors. Run it once to see the errors, then fix them one
+            by one (each can go either way: <strong>borrow with <code>&</code></strong>{' '}
+            or <strong><code>.clone()</code></strong>) so it prints three greetings.
+          </>
+        }
+        starter={`fn greet(name: String) {
+    println!("Hello, {name}");
+}
+
+fn main() {
+    let name = String::from("Ada");
+    greet(name);              // ① name is moved into the function
+    greet(name);              // ② using it again here errors
+
+    let list = vec![1, 2, 3];
+    let copy = list;          // ③ list is moved to copy
+    println!("{:?}", list);   //    using list again here errors
+    println!("{:?}", copy);
+}`}
+        hint={
+          <>
+            ① Make <code>greet</code> take a <code>&str</code> borrow and pass{' '}
+            <code>&name</code> at the call site; or call <code>name.clone()</code>{' '}
+            at the call site. ② Same idea. ③ Use <code>let copy = list.clone()</code>,
+            or change the print of <code>list</code> to print a borrow of it. The
+            simplest unified approach: <strong>if you only read it, borrow it —
+            don't take ownership</strong>.
+          </>
+        }
+        solution={`fn greet(name: &str) {        // change to a borrow
+    println!("Hello, {name}");
+}
+
+fn main() {
+    let name = String::from("Ada");
+    greet(&name);             // pass a reference, don't take ownership
+    greet(&name);             // can use it again
+
+    let list = vec![1, 2, 3];
+    let copy = list.clone();  // explicitly make a copy
+    println!("{:?}", list);   // list is still valid
+    println!("{:?}", copy);
+}`}
+        expectedOutput={`Hello, Ada
+Hello, Ada
+[1, 2, 3]
+[1, 2, 3]`}
+      />
+
+      <Callout kind="info" title="Chapter takeaways">
+        ① A value has exactly one owner; ② types that own heap data move on
+        assignment/argument-passing, invalidating the original; ③ Copy types (small
+        stack data) copy on assignment; ④ they drop automatically when they go out
+        of scope. With this mental model in hand, let's see how "borrowing" makes
+        code both safe and pleasant to write.
       </Callout>
     </>
   )

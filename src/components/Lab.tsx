@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import CodeBlock from './CodeBlock'
 import RustRunner from './RustRunner'
 import { Quiz, type QuizOption } from './Ui'
+import { useUI } from '../i18n/strings'
 import './Lab.css'
 
 /* ============================================================
@@ -25,15 +26,16 @@ export function ErrorDrill({
   explain?: ReactNode
   title?: string
 }) {
+  const t = useUI()
   return (
     <div className="drill">
       <div className="drill-head">
-        <span className="drill-badge">🔍 报错训练</span>
-        <span className="drill-title">{title ?? '读懂下面的编译错误'}</span>
+        <span className="drill-badge">{t.drillBadge}</span>
+        <span className="drill-title">{title ?? t.drillDefaultTitle}</span>
       </div>
-      <CodeBlock code={code} lang="rust" title="编译不过的代码" />
+      <CodeBlock code={code} lang="rust" title={t.drillCodeTitle} />
       <div className="drill-error">
-        <span className="drill-error-tag">rustc 报错</span>
+        <span className="drill-error-tag">{t.drillErrorTag}</span>
         <pre>{error.replace(/^\n+|\n+$/g, '')}</pre>
       </div>
       <Quiz question={question} options={options} explain={explain} />
@@ -68,21 +70,22 @@ export function MicroLab({
   expectedOutput?: string
   minutes?: number
 }) {
+  const t = useUI()
   const [showHint, setShowHint] = useState(false)
   const [showSolution, setShowSolution] = useState(false)
 
   return (
     <div className="lab">
       <div className="lab-head">
-        <span className="lab-badge">🔧 动手练习</span>
+        <span className="lab-badge">{t.labBadge}</span>
         <span className="lab-title">{title}</span>
-        <span className="lab-mins">⏱ {minutes} 分钟</span>
+        <span className="lab-mins">{t.labMins(minutes)}</span>
       </div>
       <div className="lab-goal">{goal}</div>
 
       <RustRunner
         initialCode={starter.replace(/^\n+|\n+$/g, '')}
-        title="lab.rs · 改我 → 运行"
+        title={t.labRunnerTitle}
         expectedOutput={expectedOutput}
       />
 
@@ -92,7 +95,7 @@ export function MicroLab({
             className={`lab-toggle ${showHint ? 'open' : ''}`}
             onClick={() => setShowHint((v) => !v)}
           >
-            💡 {showHint ? '收起提示' : '看提示'}
+            💡 {showHint ? t.hideHint : t.showHint}
           </button>
         )}
         {solution && (
@@ -100,7 +103,7 @@ export function MicroLab({
             className={`lab-toggle ${showSolution ? 'open' : ''}`}
             onClick={() => setShowSolution((v) => !v)}
           >
-            ✅ {showSolution ? '收起参考答案' : '看参考答案'}
+            ✅ {showSolution ? t.hideSolution : t.showSolution}
           </button>
         )}
       </div>
@@ -108,7 +111,7 @@ export function MicroLab({
       {showHint && hint && <div className="lab-hint">{hint}</div>}
       {showSolution && solution && (
         <div className="lab-solution">
-          <CodeBlock code={solution} lang="rust" title="参考答案(可复制进上方运行)" />
+          <CodeBlock code={solution} lang="rust" title={t.solutionTitle} />
         </div>
       )}
     </div>

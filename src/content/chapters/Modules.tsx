@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz, Figure } from '../../components/Ui'
 import Flow from '../../components/viz/Flow'
+import { useLang } from '../../i18n/lang'
 
 export default function Modules() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -200,6 +205,210 @@ resolver = "2"`}
         ① <code>mod</code>/<code>pub</code>/<code>use</code> ≈ 模块/export/import,默认私有;② 多文件靠模块树组织;
         ③ <code>cargo test</code> + <code>#[test]</code> 零配置测试;④ <code>///</code> 文档注释还能当测试跑;
         ⑤ workspace ≈ monorepo。下一章揭开那个一直跟着我们的 <code>!</code>——宏。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        So far all our code has been crammed into a single file. Real projects need to be
+        <strong> split up, organized, tested, and documented</strong>. This chapter covers Rust's
+        engineering side: the module system (the counterpart to the <code>import/export</code> you
+        already know), a built-in test framework, and the stunning "documentation as tests" feature.
+      </p>
+
+      <h2>The module system: the counterpart to import / export</h2>
+      <Compare
+        jsTitle="JS / TS modules"
+        rustTitle="Rust modules"
+        js={`// math.ts
+export function add(a, b) { return a + b; }
+function helper() {}  // not exported = private
+
+// main.ts
+import { add } from "./math";
+add(1, 2);`}
+        rust={`// a module inside the same file
+mod math {
+    pub fn add(a: i32, b: i32) -> i32 { a + b }
+    fn helper() {}   // private by default (no pub)
+}
+
+use math::add;       // bring it into scope
+add(1, 2);`}
+        note="The mapping: mod ≈ a module/file; pub ≈ export; use ≈ import; private by default ≈ leaving off export. Rust is private by default — you add pub to expose something."
+      />
+
+      <KeyTerm term="crate / module / path" en="package · module · path" analogy="crate ≈ an npm package; mod ≈ a file/directory within the package; the :: in a use path ≈ the / in an import path.">
+        <ul style={{ marginTop: 8 }}>
+          <li><b>crate</b> — the unit of compilation, a single library or executable (≈ one npm package).</li>
+          <li><b>module (mod)</b> — a namespace inside a crate, used to group code.</li>
+          <li><b>path</b> — locates an item with <code>::</code>, e.g. <code>std::collections::HashMap</code>.</li>
+        </ul>
+      </KeyTerm>
+
+      <h2>Laying out a multi-file project</h2>
+      <p>As the code grows, split modules into files. Rust builds the module tree from file and directory names:</p>
+      <Figure title="A typical library project layout" caption="src/lib.rs is the library root; it declares submodules with mod, and each submodule maps to a .rs file of the same name. Much like Node's directory-based modules.">
+        <Flow
+          width={680}
+          height={210}
+          nodes={[
+            { id: 'lib', x: 20, y: 90, w: 150, label: 'src/lib.rs', sub: 'crate root', tone: 'rust' },
+            { id: 'parser', x: 240, y: 25, w: 150, label: 'src/parser.rs', sub: 'mod parser', tone: 'info' },
+            { id: 'utils', x: 240, y: 95, w: 150, label: 'src/utils.rs', sub: 'mod utils', tone: 'info' },
+            { id: 'models', x: 240, y: 165, w: 150, label: 'src/models/', sub: 'mod models', tone: 'info' },
+            { id: 'mod', x: 460, y: 165, w: 180, label: 'models/mod.rs', sub: 'directory module entry', tone: 'ok' },
+          ]}
+          edges={[
+            { from: 'lib', to: 'parser', label: 'mod parser;' },
+            { from: 'lib', to: 'utils', label: 'mod utils;' },
+            { from: 'lib', to: 'models', label: 'mod models;' },
+            { from: 'models', to: 'mod' },
+          ]}
+        />
+      </Figure>
+      <CodeBlock
+        title="src/lib.rs"
+        code={`mod parser;          // declaration: go find src/parser.rs
+mod utils;           // go find src/utils.rs
+pub mod models;      // expose this module to the outside world
+
+use parser::parse;   // bring in a function from a submodule
+
+pub fn run(input: &str) {
+    let ast = parse(input);
+    // ...
+}`}
+      />
+      <Callout kind="tip" title="main.rs vs lib.rs">
+        <code>src/main.rs</code> = the executable's entry point (<code>cargo run</code>); <code>src/lib.rs</code> = the library entry point (for others to <code>use</code>).
+        Many projects have both: the lib holds the core logic (testable, reusable), and main is just a command-line shell. Our hands-on chapter uses exactly this structure.
+      </Callout>
+
+      <h2>Built-in testing: no jest to install</h2>
+      <p>
+        Rust <strong>ships with</strong> a test framework — no dependencies needed. Annotate a function with <code>#[test]</code>,
+        and <code>cargo test</code> will run it. Tests usually live in the same file as the code they test:
+      </p>
+      <CodeBlock
+        runnable
+        title="src/lib.rs (with tests)"
+        code={`pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// #[cfg(test)] means this block is compiled only during testing, never in the release build
+#[cfg(test)]
+mod tests {
+    use super::*;   // bring in add from the parent module
+
+    #[test]
+    fn add_works() {
+        assert_eq!(add(2, 3), 5);          // assert equality
+        assert_eq!(add(-1, 1), 0);
+        assert!(add(2, 2) == 4);           // assert it's true
+    }
+
+    #[test]
+    fn add_negative() {
+        assert_eq!(add(-2, -3), -5);
+    }
+}`}
+        output={`running 2 tests
+test tests::add_works ... ok
+test tests::add_negative ... ok
+
+test result: ok. 2 passed; 0 failed`}
+      />
+      <Compare
+        jsTitle="Vitest / Jest (needs install)"
+        rustTitle="cargo test (built in)"
+        js={`import { test, expect } from "vitest";
+import { add } from "./math";
+
+test("add works", () => {
+  expect(add(2, 3)).toBe(5);
+});
+// plus configure vitest.config and install deps`}
+        rust={`#[test]
+fn add_works() {
+    assert_eq!(add(2, 3), 5);
+}
+// zero config — cargo test just runs it`}
+        note="Common assertions: assert_eq!(left, right), assert_ne!, assert!(condition). When a test fails it prints a nice left-vs-right comparison."
+      />
+
+      <h2>Doc comments = documentation + tests (a stroke of genius)</h2>
+      <p>
+        Doc comments written with <code>///</code> support Markdown, and <code>cargo doc</code> generates a site identical to the official docs.
+        Even better: <strong>the code examples in your docs are run as tests by <code>cargo test</code></strong> — so your documentation can never go stale:
+      </p>
+      <CodeBlock
+        title="Doc comment + doc test"
+        code={`/// Adds two numbers.
+///
+/// # Examples
+///
+/// \`\`\`
+/// use mycrate::add;
+/// assert_eq!(add(2, 3), 5);
+/// \`\`\`
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// cargo doc --open  → generate and open the HTML docs
+// cargo test        → the assert_eq! in the example above gets executed too!`}
+      />
+      <Callout kind="rust" title="Why this feature is a big deal">
+        In the frontend world, docs and code routinely drift apart (the example in the README stopped working ages ago). Rust turns doc examples into <strong>real tests</strong>:
+        if an example is wrong, CI goes red. That forces your docs to stay working, and it's one reason documentation quality across the Rust ecosystem is consistently high.
+      </Callout>
+
+      <h2>Workspace: the counterpart to a monorepo</h2>
+      <p>
+        To develop several related crates together (like a pnpm/turbo monorepo on the frontend), use a <strong>workspace</strong>:
+      </p>
+      <CodeBlock
+        lang="toml"
+        title="Root Cargo.toml"
+        code={`[workspace]
+members = [
+    "core",      # the core library crate
+    "cli",       # the command-line crate (depends on core)
+    "wasm",      # the wasm-bindings crate (depends on core)
+]
+resolver = "2"`}
+      />
+      <Callout kind="tip" title="Mapping to the frontend">
+        A workspace ≈ pnpm-workspace.yaml / npm workspaces. It shares one <code>Cargo.lock</code> and one <code>target/</code>,
+        and crates can depend on each other directly. It's a great fit for "core logic + multiple shells (CLI / Web / Wasm)" project structures.
+      </Callout>
+
+      <Quiz
+        question="What does a Rust doc test refer to?"
+        options={[
+          { text: 'Testing the spelling and grammar of the documentation' },
+          { text: 'Code examples written inside /// doc comments, which cargo test runs as real tests so the examples always work', correct: true },
+          { text: 'A tool for generating PDF documentation' },
+          { text: 'Tests that can only be used on private functions' },
+        ]}
+        explain={
+          <>
+            Example code wrapped in ```` ``` ```` inside doc comments (<code>///</code>) is actually compiled and run by <code>cargo test</code>.
+            That keeps "the examples in the docs" and "how the code actually behaves" forever in sync — if an example goes stale, the test fails.
+          </>
+        }
+      />
+
+      <Callout kind="info" title="Key takeaways & what's next">
+        ① <code>mod</code>/<code>pub</code>/<code>use</code> ≈ module/export/import, private by default; ② multi-file projects are organized by the module tree;
+        ③ <code>cargo test</code> + <code>#[test]</code> gives you zero-config tests; ④ <code>///</code> doc comments double as tests;
+        ⑤ workspace ≈ monorepo. Next chapter we unmask that <code>!</code> that's been following us around — the macro.
       </Callout>
     </>
   )

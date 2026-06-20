@@ -1,8 +1,13 @@
 import CodeBlock from '../../components/CodeBlock'
 import { Callout, Compare, KeyTerm, Quiz } from '../../components/Ui'
 import { MicroLab } from '../../components/Lab'
+import { useLang } from '../../i18n/lang'
 
 export default function Syntax() {
+  return useLang() === 'en' ? <En /> : <Zh />
+}
+
+function Zh() {
   return (
     <>
       <p>
@@ -242,6 +247,260 @@ fn main() {
       <Callout kind="info" title="小结 & 下一步">
         你已经能读懂大部分 Rust 代码了。但 Rust 真正独特的地方还没登场——
         <strong>所有权(ownership)</strong>。下一章我们用动画把它彻底讲清楚,这是理解 Rust 的分水岭。
+      </Callout>
+    </>
+  )
+}
+
+function En() {
+  return (
+    <>
+      <p>
+        This chapter is the "learn to read" stage. The good news: Rust is part of the C/JS family,
+        so the braces, semicolons, and operators are all familiar. We'll focus only on the things
+        that are <strong>different from JS/TS and easy to trip over</strong>, and breeze past the rest.
+      </p>
+
+      <h2>Variables: immutable by default</h2>
+      <p>
+        Here's Rust's first counterintuitive point: a variable declared with <code>let</code> is
+        <strong> read-only by default</strong>, and you must add <code>mut</code> to change it.
+        It's like JS where <strong>everything is <code>const</code> by default, and you'd only reach for <code>let</code> when you need to mutate</strong>.
+      </p>
+      <Compare
+        js={`let count = 0;     // mutable
+count = 1;         // ✅ ok
+const MAX = 100;   // immutable`}
+        rust={`let count = 0;     // immutable by default!
+count = 1;         // ❌ compile error
+let mut n = 0;     // add mut to allow changes
+n = 1;             // ✅ ok
+const MAX: i32 = 100;  // compile-time constant`}
+        note="Immutable-by-default is a safety choice: most variables never actually need to change, and the compiler guarantees there are no accidental reassignments."
+      />
+
+      <KeyTerm term="Shadowing" en="shadowing" analogy="In JS, redeclaring a const with the same name in a nested scope errors; Rust lets you redeclare the same name, often used to 'transform' a value.">
+        Redeclaring a variable of the same name with <code>let</code> "shadows" the old one, and can even change its type. Common when parsing input:
+        <CodeBlock code={`let spaces = "   ";          // this is &str
+let spaces = spaces.len();   // shadowed into usize (a number)
+// no need for two names like spaces_str / spaces_len`} />
+      </KeyTerm>
+
+      <h2>Types: like TS, but pickier</h2>
+      <p>
+        Rust can <strong>infer</strong> most types (like TS), but the type system is stricter: numbers
+        come in different sizes and signed/unsigned variants, and there's <strong>no implicit conversion</strong>
+        (adding an <code>i32</code> and an <code>i64</code> requires an explicit cast).
+      </p>
+      <CodeBlock
+        runnable
+        title="Scalar types"
+        code={`fn main() {
+    let a: i32 = -42;       // signed 32-bit integer (default integer type)
+    let b: u8 = 255;        // unsigned 8-bit (0~255)
+    let c: f64 = 3.14;      // 64-bit float (default float type)
+    let flag: bool = true;
+    let letter: char = '🦀'; // char is a 4-byte Unicode scalar, single quotes!
+
+    // no implicit conversion, use 'as' to cast explicitly
+    let sum = a as i64 + 1000;
+    println!("{a} {b} {c} {flag} {letter} {sum}");
+}`}
+        output={`-42 255 3.14 true 🦀 958`}
+      />
+      <Callout kind="warn" title="i32 vs number">
+        JS has a single <code>number</code> (double-precision float); Rust has <code>i8/i16/i32/i64/i128</code>,
+        the matching unsigned <code>u*</code>, plus <code>f32/f64</code>. Integer overflow panics in debug builds
+        and wraps around in release builds — don't expect it to silently become <code>Infinity</code> like JS does.
+      </Callout>
+
+      <h3>Two kinds of "string"</h3>
+      <p>This is the biggest source of confusion for beginners. Let's build the intuition first (details come in the ownership chapter):</p>
+      <ul>
+        <li><code>&str</code> — a string <strong>slice/reference</strong>: read-only and fixed. A literal like <code>"hi"</code> is one. Think of an immutable string constant in JS.</li>
+        <li><code>String</code> — a heap-allocated, <strong>growable</strong> string. Use it when you need to concatenate or modify. Think of the kind of mutable string you'd push onto in JS.</li>
+      </ul>
+      <CodeBlock
+        code={`let s1: &str = "hello";                  // a slice pointing at read-only data
+let mut s2: String = String::from("hello"); // owns its data, mutable
+s2.push_str(", world");                  // append
+let s3: &str = &s2;                       // you can borrow a &str from a String`}
+      />
+
+      <h3>Tuples and arrays</h3>
+      <Compare
+        js={`// array: variable length, mixed types (loose)
+const arr = [1, 2, 3];
+arr.push(4);
+
+// no real tuple, you fake it with an array
+const point = [3, 4];`}
+        rust={`// array: fixed length, same type
+let arr: [i32; 3] = [1, 2, 3];
+// arr.push() — nope! fixed length. Use Vec<i32> to grow
+
+// tuple: fixed length, mixed types
+let point: (i32, i32) = (3, 4);
+let (x, y) = point;       // destructuring, just like JS
+println!("{}", point.0);  // access by position with .0 .1`}
+        note="When you need a 'pushable array', use Vec<T> (a dynamic array) — that's what maps to JS's Array. The 'Collections & Iterators' chapter covers it in detail."
+      />
+
+      <h2>Functions: the last line is the return value</h2>
+      <p>
+        Rust is an <strong>expression language</strong>: the last expression in a function body
+        (<strong>with no semicolon</strong>) is the return value — no <code>return</code> needed.
+        Parameters and return values <strong>must</strong> be typed (unlike TS, where you can omit them).
+      </p>
+      <Compare
+        js={`function add(a, b) {
+  return a + b;
+}
+
+const square = x => x * x;`}
+        rust={`fn add(a: i32, b: i32) -> i32 {
+    a + b          // no semicolon = return it
+}
+
+// closure (the equivalent of an arrow function)
+let square = |x: i32| x * x;`}
+        note="Add a semicolon — a + b; — and it becomes a 'statement', so the function returns () (unit, like void). The types won't match and you'll get an error — a very common beginner trap."
+      />
+
+      <Callout kind="rust" title="Everything is an expression">
+        Even <code>if</code> returns a value. This keeps code compact and cuts down on temporary variables.
+      </Callout>
+
+      <h2>Control flow: if is an expression, match is the star</h2>
+      <Compare
+        js={`// ternary operator
+const label = n > 0 ? "positive" : "negative";
+
+// switch
+switch (status) {
+  case 200: msg = "ok"; break;
+  case 404: msg = "not found"; break;
+  default: msg = "other";
+}`}
+        rust={`// if is used directly as an expression, no ternary needed
+let label = if n > 0 { "positive" } else { "negative" };
+
+// match: far more powerful than switch, and must be exhaustive
+let msg = match status {
+    200 => "ok",
+    404 => "not found",
+    _ => "other",     // _ is the 'rest'; miss a branch and it won't compile
+};`}
+        note="match forces exhaustiveness: leave one case unhandled and the compiler flat-out rejects it. That's exactly what makes it safer than switch."
+      />
+
+      <h3>Loops: for / while / loop</h3>
+      <CodeBlock
+        runnable
+        title="Three kinds of loop"
+        code={`fn main() {
+    // for over a range (0..5 excludes 5, 0..=5 includes 5)
+    for i in 0..5 {
+        print!("{i} ");
+    }
+    println!();
+
+    // iterate a collection (like for...of)
+    let langs = ["JS", "TS", "Rust"];
+    for lang in langs {
+        print!("{lang} ");
+    }
+    println!();
+
+    // loop is an infinite loop, and it can break out with a value!
+    let mut n = 1;
+    let first_over_100 = loop {
+        n *= 2;
+        if n > 100 { break n; }  // break returns a value
+    };
+    println!("\\nFirst power of 2 over 100: {first_over_100}");
+}`}
+        output={`0 1 2 3 4
+JS TS Rust
+
+First power of 2 over 100: 128`}
+      />
+
+      <h2>What's that <code>!</code>: macros vs functions</h2>
+      <p>
+        The <code>!</code> after <code>println!</code>, <code>vec!</code>, and <code>format!</code> means they're
+        <strong> macros</strong>, not ordinary functions. Macros expand into code at compile time and can do
+        things functions can't — for example, <code>println!</code> checks at compile time that your format string
+        and arguments line up. For now, just remember:
+        <strong> anything with a <code>!</code> is a macro; use it as shown</strong>.
+      </p>
+      <CodeBlock
+        code={`println!("normal print, with a newline");
+print!("no newline");
+let v = vec![1, 2, 3];              // quickly build a Vec with a macro
+let s = format!("{}-{}", "a", "b"); // like println but returns a String instead of printing
+eprintln!("print to stderr");`}
+      />
+
+      <Quiz
+        question="Will the following function compile? Why?"
+        options={[
+          { text: 'Yes, it returns 8' },
+          { text: "No — a + b; has a semicolon, making it a statement, so the function actually returns () (unit), which doesn't match the declared -> i32", correct: true },
+          { text: 'No, because it is missing the return keyword' },
+          { text: 'Yes, but with a warning' },
+        ]}
+        explain={
+          <>
+            <CodeBlock code={`fn add(a: i32, b: i32) -> i32 {
+    a + b;   // ← this semicolon is the key
+}`} />
+            The semicolon turns the expression into a statement, so the function body ends without a "value
+            expression" and defaults to returning the unit type <code>()</code>. Drop the semicolon and it's fixed.
+            This is one of the most common errors Rust beginners hit.
+          </>
+        }
+      />
+
+      <h2>Hands-on practice</h2>
+      <MicroLab
+        title="Make the function actually return a value"
+        minutes={5}
+        goal={
+          <>
+            The <code>add</code> below is supposed to return the sum of two numbers, but it fails to compile
+            (it returns <code>()</code> instead of <code>i32</code>). <strong>Change just one character</strong> to
+            fix it and make it print <code>8</code>. Hit "▶ Run" to verify.
+          </>
+        }
+        starter={`fn add(a: i32, b: i32) -> i32 {
+    a + b;
+}
+
+fn main() {
+    println!("{}", add(3, 5));
+}`}
+        hint={
+          <>
+            Look at the <strong>semicolon</strong> at the end of the last line of the function body. With the
+            semicolon, <code>a + b</code> goes from an "expression" to a "statement", so the function has no return
+            value at the end and defaults to returning <code>()</code>.
+          </>
+        }
+        solution={`fn add(a: i32, b: i32) -> i32 {
+    a + b      // drop the semicolon: this line's value becomes the return value
+}
+
+fn main() {
+    println!("{}", add(3, 5));
+}`}
+        expectedOutput={`8`}
+      />
+
+      <Callout kind="info" title="Recap & next step">
+        You can already read most Rust code. But Rust's truly unique feature hasn't shown up yet —
+        <strong> ownership</strong>. In the next chapter we'll explain it thoroughly with animations; it's the
+        watershed for really understanding Rust.
       </Callout>
     </>
   )
