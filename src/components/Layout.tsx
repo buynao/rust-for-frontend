@@ -132,7 +132,7 @@ export default function Layout() {
 
         {open && <div className="scrim" onClick={() => setOpen(false)} />}
 
-        <main className="content" key={location.pathname}>
+        <main className="content" key={`${location.pathname}|${lang}`}>
           <Outlet />
         </main>
       </div>
