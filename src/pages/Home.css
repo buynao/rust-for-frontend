@@ -195,6 +195,29 @@
   border-top: 1px solid var(--line);
   margin-top: 40px;
 }
+.home-foot-gh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  color: var(--fg-1);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.18s;
+}
+.home-foot-gh:hover {
+  text-decoration: none;
+  color: var(--fg-0);
+  border-color: var(--rust-deep);
+  background: var(--bg-2);
+  transform: translateY(-1px);
+}
+.home-foot-meta {
+  margin-top: 16px;
+  color: var(--fg-3);
+}
 
 @media (max-width: 760px) {
   .why-cards { grid-template-columns: 1fr; }
