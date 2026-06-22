@@ -158,7 +158,6 @@ export default function OwnershipViz() {
           return (
             <g key={v.name}>
               <motion.rect
-                layout
                 x={STACK_X}
                 y={y}
                 width={120}
