@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import rust from 'react-syntax-highlighter/dist/esm/languages/prism/rust'
 import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash'
 import toml from 'react-syntax-highlighter/dist/esm/languages/prism/toml'
@@ -11,6 +11,7 @@ import jsx from 'react-syntax-highlighter/dist/esm/languages/prism/jsx'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import RustRunner from './RustRunner'
 import { useUI } from '../i18n/strings'
+import { useTheme } from '../theme'
 import './CodeBlock.css'
 
 SyntaxHighlighter.registerLanguage('rust', rust)
@@ -57,6 +58,7 @@ export default function CodeBlock({
   output,
 }: Props) {
   const t = useUI()
+  const theme = useTheme()
   const [copied, setCopied] = useState(false)
   const trimmed = code.replace(/^\n+|\n+$/g, '')
 
@@ -91,7 +93,7 @@ export default function CodeBlock({
       </div>
       <SyntaxHighlighter
         language={langMap[lang] ?? 'text'}
-        style={oneDark}
+        style={theme === 'light' ? oneLight : oneDark}
         showLineNumbers
         wrapLines
         lineProps={(n: number) =>

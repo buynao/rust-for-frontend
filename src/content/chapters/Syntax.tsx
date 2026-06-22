@@ -193,7 +193,14 @@ eprintln!("打印到 stderr");`}
       />
 
       <Quiz
-        question="下面这个函数能通过编译吗?为什么?"
+        question={
+          <>
+            下面这个函数能通过编译吗?为什么?
+            <CodeBlock code={`fn add(a: i32, b: i32) -> i32 {
+    a + b;
+}`} />
+          </>
+        }
         options={[
           { text: '能,返回 8' },
           { text: '不能,因为 a + b; 带了分号,变成语句,函数实际返回 ()(空),和声明的 -> i32 对不上', correct: true },
@@ -443,7 +450,14 @@ eprintln!("print to stderr");`}
       />
 
       <Quiz
-        question="Will the following function compile? Why?"
+        question={
+          <>
+            Will the following function compile? Why?
+            <CodeBlock code={`fn add(a: i32, b: i32) -> i32 {
+    a + b;
+}`} />
+          </>
+        }
         options={[
           { text: 'Yes, it returns 8' },
           { text: "No — a + b; has a semicolon, making it a statement, so the function actually returns () (unit), which doesn't match the declared -> i32", correct: true },

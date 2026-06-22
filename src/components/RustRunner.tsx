@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
   runOnPlayground,
   playgroundUrl,
@@ -8,6 +8,7 @@ import {
   type ExecuteResult,
 } from '../lib/playground'
 import { useUI } from '../i18n/strings'
+import { useTheme } from '../theme'
 import './RustRunner.css'
 
 interface Props {
@@ -34,6 +35,7 @@ const EDITOR_FONT: React.CSSProperties = {
 
 export default function RustRunner({ initialCode, title, expectedOutput }: Props) {
   const t = useUI()
+  const theme = useTheme()
   const [code, setCode] = useState(initialCode)
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<ExecuteResult | null>(null)
@@ -102,7 +104,7 @@ export default function RustRunner({ initialCode, title, expectedOutput }: Props
       <div className="runner-editor">
         <SyntaxHighlighter
           language="rust"
-          style={oneDark}
+          style={theme === 'light' ? oneLight : oneDark}
           customStyle={{ ...EDITOR_FONT, background: 'transparent', pointerEvents: 'none' }}
           codeTagProps={{ style: { fontFamily: 'var(--font-mono)' } }}
           wrapLongLines

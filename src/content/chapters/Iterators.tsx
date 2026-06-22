@@ -142,7 +142,12 @@ rust
       </div>
 
       <Quiz
-        question="下面这行 Rust 代码运行后会打印什么?"
+        question={
+          <>
+            下面这行 Rust 代码运行后会打印什么?
+            <CodeBlock code={`vec![1, 2, 3].iter().map(|x| println!("{x}"));`} />
+          </>
+        }
         options={[
           { text: '打印 1 2 3' },
           { text: '什么都不打印,并且编译器会警告迭代器未被使用', correct: true },
@@ -151,7 +156,6 @@ rust
         ]}
         explain={
           <>
-            <CodeBlock code={`vec![1, 2, 3].iter().map(|x| println!("{x}"));`} />
             <code>map</code> 是惰性适配器,没有消费者去「拉」它,闭包一次都不会执行。Rust 会给出
             <code>unused `Map` that must be used</code> 警告。要真正打印,用
             <code>{'.for_each(|x| println!("{x}"))'}</code> 或 <code>for</code> 循环。
@@ -340,7 +344,12 @@ rust
       </div>
 
       <Quiz
-        question="What does the line of Rust below print when it runs?"
+        question={
+          <>
+            What does the line of Rust below print when it runs?
+            <CodeBlock code={`vec![1, 2, 3].iter().map(|x| println!("{x}"));`} />
+          </>
+        }
         options={[
           { text: 'Prints 1 2 3' },
           { text: 'Prints nothing, and the compiler warns that the iterator is unused', correct: true },
@@ -349,7 +358,6 @@ rust
         ]}
         explain={
           <>
-            <CodeBlock code={`vec![1, 2, 3].iter().map(|x| println!("{x}"));`} />
             <code>map</code> is a lazy adapter, and with no consumer to "pull" it, the closure never runs even once. Rust will give you an
             <code>unused `Map` that must be used</code> warning. To actually print, use
             <code>{'.for_each(|x| println!("{x}"))'}</code> or a <code>for</code> loop.

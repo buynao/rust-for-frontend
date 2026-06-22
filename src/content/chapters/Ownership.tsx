@@ -125,7 +125,15 @@ n 还能用: 5`}
       </Callout>
 
       <Quiz
-        question="以下代码哪一行会导致编译错误?"
+        question={
+          <>
+            以下代码哪一行会导致编译错误?
+            <CodeBlock code={`let v = vec![1, 2, 3];        // 1
+let v2 = v;                   // 2
+println!("{:?}", v2);         // 3
+println!("{:?}", v);          // 4`} />
+          </>
+        }
         options={[
           { text: '第 2 行 let v2 = v;' },
           { text: '第 3 行 println!("{:?}", v2);' },
@@ -340,7 +348,15 @@ n is still usable: 5`}
       </Callout>
 
       <Quiz
-        question="Which line in the code below causes a compile error?"
+        question={
+          <>
+            Which line in the code below causes a compile error?
+            <CodeBlock code={`let v = vec![1, 2, 3];        // 1
+let v2 = v;                   // 2
+println!("{:?}", v2);         // 3
+println!("{:?}", v);          // 4`} />
+          </>
+        }
         options={[
           { text: 'Line 2: let v2 = v;' },
           { text: 'Line 3: println!("{:?}", v2);' },

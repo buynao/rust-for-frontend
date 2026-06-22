@@ -48,8 +48,87 @@
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55);
 
+  /* 代码块表面(随主题切换) */
+  --code-bg: #1a1f2b;
+  --code-output-bg: #11151d;
+  --err-term-bg: #1a1015;
+  --err-term-fg: #f0b8b8;
+
+  /* 顶栏背景(半透明,配合 backdrop-filter 毛玻璃) */
+  --topbar-bg: rgba(10, 13, 19, 0.8);
+
+  /* 选区文字色 */
+  --selection-fg: #fff;
+
+  /* 整页背景渐变(随主题切换) */
+  --page-bg:
+    radial-gradient(1200px 800px at 80% -10%, rgba(222, 165, 132, 0.06), transparent 60%),
+    radial-gradient(1000px 700px at -10% 10%, rgba(106, 166, 255, 0.05), transparent 55%),
+    var(--bg-0);
+
   --sidebar-w: 300px;
   --content-max: 880px;
+
+  color-scheme: dark;
+}
+
+/* ============================================================
+   亮色模式 / Light theme — 暖纸质感,沿用 Rust 焦糖橙品牌色
+   通过 <html data-theme="light"> 启用(见 src/theme.tsx)
+   ============================================================ */
+:root[data-theme='light'] {
+  /* 背景层级:暖白纸张 */
+  --bg-0: #f7f4ee;
+  --bg-1: #ffffff;
+  --bg-2: #f1ece3;
+  --bg-3: #e7e0d4;
+  --bg-hover: #ded5c6;
+
+  /* 文本:暖墨色 */
+  --fg-0: #1d1a15;
+  --fg-1: #3c382f;
+  --fg-2: #6b6456;
+  --fg-3: #9b9384;
+
+  /* 品牌 / 强调:在浅底上加深以保证对比度 */
+  --rust: #b1623a;
+  --rust-deep: #8f4a27;
+  --rust-soft: rgba(177, 98, 58, 0.1);
+  --js: #9a7b00;
+  --js-soft: rgba(154, 123, 0, 0.12);
+  --ok: #1f9d63;
+  --ok-soft: rgba(31, 157, 99, 0.12);
+  --warn: #b9791a;
+  --warn-soft: rgba(185, 121, 26, 0.14);
+  --err: #cf4848;
+  --err-soft: rgba(207, 72, 72, 0.1);
+  --info: #2f6fd6;
+  --info-soft: rgba(47, 111, 214, 0.1);
+
+  /* 边框 / 线 */
+  --line: rgba(40, 30, 20, 0.1);
+  --line-strong: rgba(40, 30, 20, 0.2);
+
+  /* 阴影:更轻 */
+  --shadow: 0 6px 22px rgba(60, 45, 30, 0.12);
+  --shadow-lg: 0 18px 50px rgba(60, 45, 30, 0.18);
+
+  /* 代码块表面:浅纸色 */
+  --code-bg: #f6f2ea;
+  --code-output-bg: #efe9df;
+  --err-term-bg: #fbeaea;
+  --err-term-fg: #9c3a3a;
+
+  --topbar-bg: rgba(247, 244, 238, 0.82);
+
+  --selection-fg: #1d1a15;
+
+  --page-bg:
+    radial-gradient(1200px 800px at 80% -10%, rgba(177, 98, 58, 0.07), transparent 60%),
+    radial-gradient(1000px 700px at -10% 10%, rgba(47, 111, 214, 0.05), transparent 55%),
+    var(--bg-0);
+
+  color-scheme: light;
 }
 
 * {
@@ -63,11 +142,10 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background:
-    radial-gradient(1200px 800px at 80% -10%, rgba(222, 165, 132, 0.06), transparent 60%),
-    radial-gradient(1000px 700px at -10% 10%, rgba(106, 166, 255, 0.05), transparent 55%),
-    var(--bg-0);
+  background: var(--page-bg);
+  background-attachment: fixed;
   color: var(--fg-1);
+  transition: background-color 0.25s ease, color 0.25s ease;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   line-height: 1.7;
@@ -89,7 +167,7 @@ h1, h2, h3, h4 {
 
 ::selection {
   background: var(--rust-soft);
-  color: #fff;
+  color: var(--selection-fg);
 }
 
 /* 滚动条 */

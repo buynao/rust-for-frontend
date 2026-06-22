@@ -16,6 +16,8 @@ export interface UIStrings {
   sidebarFoot: (total: number) => string
   langSwitchLabel: string // 切到「另一种」语言时按钮显示的文字
   langSwitchTitle: string
+  themeSwitchToDark: string // 当前为亮色时,按钮提示「切到暗色」
+  themeSwitchToLight: string // 当前为暗色时,按钮提示「切到亮色」
 
   // Home
   badgeRust: string
@@ -101,6 +103,8 @@ const zh: UIStrings = {
   sidebarFoot: (t) => `为前端而写 · 共 ${t} 章`,
   langSwitchLabel: 'EN',
   langSwitchTitle: '切换到英文',
+  themeSwitchToDark: '切换到暗色',
+  themeSwitchToLight: '切换到亮色',
 
   badgeRust: '🦀 Rust',
   badgeForFrontend: '面向前端工程师',
@@ -217,6 +221,8 @@ const en: UIStrings = {
   sidebarFoot: (t) => `Written for frontend devs · ${t} chapters`,
   langSwitchLabel: '中文',
   langSwitchTitle: 'Switch to Chinese',
+  themeSwitchToDark: 'Switch to dark',
+  themeSwitchToLight: 'Switch to light',
 
   badgeRust: '🦀 Rust',
   badgeForFrontend: 'For Frontend Engineers',

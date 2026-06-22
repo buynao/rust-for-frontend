@@ -3,7 +3,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
-  background: #1a1f2b;
+  background: var(--code-bg);
   box-shadow: var(--shadow);
 }
 .codeblock-bar {
@@ -69,7 +69,7 @@
 }
 .codeblock-output {
   border-top: 1px dashed var(--line-strong);
-  background: #11151d;
+  background: var(--code-output-bg);
   padding: 10px 16px;
 }
 .codeblock-output-tag {

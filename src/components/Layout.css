@@ -12,7 +12,7 @@
   align-items: center;
   gap: 16px;
   padding: 0 20px;
-  background: rgba(10, 13, 19, 0.8);
+  background: var(--topbar-bg);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
@@ -111,6 +111,27 @@
 }
 .lang-toggle-ico {
   font-size: 0.95rem;
+  line-height: 1;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-2);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.theme-toggle:hover {
+  color: var(--rust);
+  border-color: var(--rust);
+}
+.theme-toggle-ico {
+  font-size: 1rem;
   line-height: 1;
 }
 

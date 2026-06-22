@@ -139,7 +139,16 @@ for x in &v {          // &v 借出只读引用
       />
 
       <Quiz
-        question="下面代码能编译吗?"
+        question={
+          <>
+            下面代码能编译吗?
+            <CodeBlock code={`let s = String::from("hi");
+let r1 = &s;
+let r2 = &s;
+let r3 = &s;
+println!("{r1} {r2} {r3}");`} />
+          </>
+        }
         options={[
           { text: '能,r1、r2、r3 都是只读借用,可以共存', correct: true },
           { text: '不能,一个变量最多只能被借用一次' },
@@ -148,11 +157,6 @@ for x in &v {          // &v 借出只读引用
         ]}
         explain={
           <>
-            <CodeBlock code={`let s = String::from("hi");
-let r1 = &s;
-let r2 = &s;
-let r3 = &s;
-println!("{r1} {r2} {r3}");`} />
             全是<strong>不可变借用</strong>,数量不限,因为大家都只读、不会互相干扰。只有当出现
             <code>&mut</code> 时,独占规则才生效。
           </>
@@ -377,7 +381,16 @@ for x in &v {          // &v lends a read-only reference
       />
 
       <Quiz
-        question="Will the code below compile?"
+        question={
+          <>
+            Will the code below compile?
+            <CodeBlock code={`let s = String::from("hi");
+let r1 = &s;
+let r2 = &s;
+let r3 = &s;
+println!("{r1} {r2} {r3}");`} />
+          </>
+        }
         options={[
           { text: 'Yes—r1, r2, and r3 are all read-only borrows, so they can coexist', correct: true },
           { text: 'No, a variable can be borrowed at most once' },
@@ -386,11 +399,6 @@ for x in &v {          // &v lends a read-only reference
         ]}
         explain={
           <>
-            <CodeBlock code={`let s = String::from("hi");
-let r1 = &s;
-let r2 = &s;
-let r3 = &s;
-println!("{r1} {r2} {r3}");`} />
             These are all <strong>immutable borrows</strong>, and you can have as many as you like, because everyone is just
             reading and nobody interferes with anyone else. The exclusivity rule only kicks in once a <code>&mut</code> shows up.
           </>

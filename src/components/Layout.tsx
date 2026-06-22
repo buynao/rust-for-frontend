@@ -4,6 +4,7 @@ import { chapters, groupedChapters } from '../content/chapters'
 import { useProgress } from '../hooks/useProgress'
 import { useLang, loc, useLangControls } from '../i18n/lang'
 import { useUI } from '../i18n/strings'
+import { useThemeControls } from '../theme'
 import './Layout.css'
 
 export default function Layout() {
@@ -13,7 +14,9 @@ export default function Layout() {
   const location = useLocation()
   const lang = useLang()
   const { toggle: toggleLang } = useLangControls()
+  const { theme, toggle: toggleTheme } = useThemeControls()
   const t = useUI()
+  const themeTitle = theme === 'light' ? t.themeSwitchToDark : t.themeSwitchToLight
   const pct = Math.round((completed.size / chapters.length) * 100)
 
   return (
@@ -44,6 +47,16 @@ export default function Layout() {
         >
           {t.playground}
         </a>
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title={themeTitle}
+          aria-label={themeTitle}
+        >
+          <span className="theme-toggle-ico" aria-hidden="true">
+            {theme === 'light' ? '🌙' : '☀️'}
+          </span>
+        </button>
         <button
           className="lang-toggle"
           onClick={toggleLang}

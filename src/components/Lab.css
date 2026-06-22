@@ -28,7 +28,7 @@
 }
 .drill-error {
   margin: 0 0 2px;
-  background: #1a1015;
+  background: var(--err-term-bg);
   border: 1px solid rgba(239, 111, 111, 0.3);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
@@ -47,7 +47,7 @@
   font-family: var(--font-mono);
   font-size: 0.78rem;
   line-height: 1.5;
-  color: #f0b8b8;
+  color: var(--err-term-fg);
   white-space: pre-wrap;
   word-break: break-word;
 }

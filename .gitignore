@@ -3,6 +3,7 @@ node_modules
 dist
 dist-ssr
 *.local
+DEPLOY.md
 .DS_Store
 *.tsbuildinfo
 .vite

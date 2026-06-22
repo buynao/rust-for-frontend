@@ -25,6 +25,19 @@
                 : 'en'
           document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
         } catch (e) {}
+        // 同样在挂载前确定主题(localStorage 优先,其次系统配色),避免亮/暗闪烁。
+        // 与 src/theme.tsx 的检测逻辑保持一致。
+        try {
+          var savedTheme = localStorage.getItem('rff:theme')
+          var theme =
+            savedTheme === 'dark' || savedTheme === 'light'
+              ? savedTheme
+              : window.matchMedia &&
+                  window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark'
+          document.documentElement.setAttribute('data-theme', theme)
+        } catch (e) {}
       })()
     </script>
   </head>
