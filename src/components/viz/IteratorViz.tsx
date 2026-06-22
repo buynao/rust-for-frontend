@@ -191,7 +191,7 @@ export default function IteratorViz() {
         </text>
       </svg>
 
-      <div className="viz-caption-line">{f.caption}</div>
+      <div key={step} className="viz-caption-line">{f.caption}</div>
 
       <StepperControls step={step} total={frames.length} onPrev={prev} onNext={next} onReset={reset} onGo={go} />
     </div>

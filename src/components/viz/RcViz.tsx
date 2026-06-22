@@ -234,7 +234,7 @@ export default function RcViz() {
         </defs>
       </svg>
 
-      <div className="viz-caption-line">
+      <div key={step} className="viz-caption-line">
         <code style={{ display: 'block', marginBottom: 6, color: 'var(--rust)' }}>{f.code}</code>
         {f.caption}
       </div>

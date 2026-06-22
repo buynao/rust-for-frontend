@@ -106,7 +106,11 @@ export default function OwnershipViz() {
 
   return (
     <div className="viz">
+      {/* key={step}:逐帧切换时整块重挂载,而不是让 React 去 diff 富文本里
+          嵌套的文本/行内节点。这能从根上避免「removeChild 找不到节点」崩溃
+          (与按语言重挂载内容区同一套思路)。 */}
       <svg
+        key={`svg-${step}`}
         viewBox="0 0 520 260"
         width="100%"
         role="img"
@@ -200,7 +204,7 @@ export default function OwnershipViz() {
         </defs>
       </svg>
 
-      <div className={`viz-caption-line ${f.error ? 'is-error' : ''}`}
+      <div key={`cap-${step}`} className={`viz-caption-line ${f.error ? 'is-error' : ''}`}
         style={f.error ? { borderLeftColor: 'var(--err)' } : undefined}>
         <code style={{ display: 'block', marginBottom: 6, color: f.error ? 'var(--err)' : 'var(--rust)' }}>
           {f.code}
