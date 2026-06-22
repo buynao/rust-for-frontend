@@ -3,6 +3,17 @@
   font-family: var(--font-sans);
 }
 
+/* 逐帧切换时的轻量淡入(用 CSS 动画替代 framer-motion,避免 SVG 节点
+   在快速点击/打断动画时与 React 提交阶段失配触发 removeChild 崩溃) */
+@keyframes viz-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.viz-fade {
+  animation: viz-fade-in 0.35s ease both;
+}
+
 /* 步进控制器 */
 .stepper {
   display: flex;

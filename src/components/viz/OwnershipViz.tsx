@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { useSteps, StepperControls } from './Stepper'
 import { useLang } from '../../i18n/lang'
 import './viz.css'
@@ -127,11 +126,7 @@ export default function OwnershipViz() {
 
         {/* 堆块 */}
         {f.heapAlive ? (
-          <motion.g
-            initial={false}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <g className="viz-fade">
             <rect x={HEAP_X} y={86} width={150} height={48} rx={8}
               fill="var(--rust-soft)" stroke="var(--rust-deep)" strokeWidth={1.5} />
             <text x={HEAP_X + 14} y={106} fill="var(--rust)" fontSize="15" fontWeight="700">
@@ -140,9 +135,9 @@ export default function OwnershipViz() {
             <text x={HEAP_X + 14} y={123} fill="var(--fg-3)" fontSize="10">
               {lang === 'en' ? '0x1f04 · char data' : '0x1f04 · 字符数据'}
             </text>
-          </motion.g>
+          </g>
         ) : (
-          <g>
+          <g className="viz-fade">
             <rect x={HEAP_X} y={86} width={150} height={48} rx={8}
               fill="none" stroke="var(--fg-3)" strokeDasharray="4 4" />
             <text x={HEAP_X + 30} y={114} fill="var(--fg-3)" fontSize="12">
@@ -156,8 +151,8 @@ export default function OwnershipViz() {
           const y = ROW_Y(i)
           const color = v.valid ? 'var(--info)' : 'var(--fg-3)'
           return (
-            <g key={v.name}>
-              <motion.rect
+            <g key={v.name} className="viz-fade">
+              <rect
                 x={STACK_X}
                 y={y}
                 width={120}
@@ -167,7 +162,7 @@ export default function OwnershipViz() {
                 stroke={color}
                 strokeWidth={1.5}
                 strokeDasharray={v.valid ? '0' : '5 4'}
-                animate={{ opacity: v.valid ? 1 : 0.5 }}
+                opacity={v.valid ? 1 : 0.5}
               />
               <text x={STACK_X + 14} y={y + 20} fill={color} fontSize="15" fontWeight="700">
                 {v.name}
@@ -182,16 +177,15 @@ export default function OwnershipViz() {
               )}
               {/* 指向堆的箭头 */}
               {v.toHeap && f.heapAlive && (
-                <motion.path
+                <path
+                  className="viz-fade"
                   d={`M ${STACK_X + 122} ${y + 22} C ${STACK_X + 200} ${y + 22}, ${HEAP_X - 60} 110, ${HEAP_X - 2} 110`}
                   fill="none"
                   stroke={v.valid ? 'var(--rust)' : 'var(--fg-3)'}
                   strokeWidth={v.valid ? 2 : 1.2}
                   strokeDasharray={v.valid ? '0' : '4 4'}
                   markerEnd="url(#arrowhead)"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1, opacity: v.valid ? 1 : 0.4 }}
-                  transition={{ duration: 0.5 }}
+                  opacity={v.valid ? 1 : 0.4}
                 />
               )}
             </g>
